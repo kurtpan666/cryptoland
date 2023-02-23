@@ -1,0 +1,692 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-02-23T15:15:33+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">配对或双线性映射</title><link href="http://localhost:4000/2023/02/22/pairings-or-bilinear-maps.html" rel="alternate" type="text/html" title="配对或双线性映射" /><published>2023-02-22T08:00:00+08:00</published><updated>2023-02-22T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/22/pairings-or-bilinear-maps</id><content type="html" xml:base="http://localhost:4000/2023/02/22/pairings-or-bilinear-maps.html"><![CDATA[<blockquote>
+  <ul>
+    <li>原文：<a href="https://alinush.github.io/2022/12/31/pairings-or-bilinear-maps.html">Pairings or bilinear maps</a></li>
+    <li>作者：Alin Tomescu</li>
+    <li>译者：Kurt Pan</li>
+  </ul>
+</blockquote>
+
+<!-- TODO: Add example of pairing (insecure). -->
+
+<p class="info"><strong>摘要：</strong> <em>配对</em>，或者<em>双线性映射</em>，是对密码学来说非常强大的一个数学工具。配对给我们带来了最简洁的零知识证明<sup id="fnref:GGPR12e" role="doc-noteref"><a href="#fn:GGPR12e" class="footnote" rel="footnote">1</a></sup>$^,$<sup id="fnref:PGHR13e" role="doc-noteref"><a href="#fn:PGHR13e" class="footnote" rel="footnote">2</a></sup>$^,$<sup id="fnref:Grot16" role="doc-noteref"><a href="#fn:Grot16" class="footnote" rel="footnote">3</a></sup>，最高效的门限签名<sup id="fnref:BLS01" role="doc-noteref"><a href="#fn:BLS01" class="footnote" rel="footnote">4</a></sup>，第一个可用的身份基加密（IBE）方案<sup id="fnref:BF01" role="doc-noteref"><a href="#fn:BF01" class="footnote" rel="footnote">5</a></sup> ，以及其它很多高效的密码系统<sup id="fnref:KZG10" role="doc-noteref"><a href="#fn:KZG10" class="footnote" rel="footnote">6</a></sup>。本文中，我将介绍一点配对的性质，其密码学应用和令人着迷的历史。事实上，读完此文后，<a href="#历史">你可能会想要去监狱里待上个一两年</a>。</p>
+
+<!--more-->
+
+<p class="warning"><strong>关于推文的订正：</strong>我在发布这篇文章的<a href="https://twitter.com/alinush407/status/1612518576862408705">原始推文</a>中说到”没有【配对】，<strong>S</strong>NARKs就不可能”，这里加粗了 <strong>S</strong> 以强调这些SNARKs的“简洁性”。然而，感谢<a href="#致谢">推特上的一些大佬</a>，我意识到这并<strong>不</strong>完全正确，而要依赖于一个人说“简洁”时他到底是什么意思。具体来说，Gentry和Wichs<sup id="fnref:GW10" role="doc-noteref"><a href="#fn:GW10" class="footnote" rel="footnote">7</a></sup>的<em>多项式对数证明大小</em>意义上的”简洁“SNARKs，存在于很多假设之上，包括离散对数<sup id="fnref:BCCplus16" role="doc-noteref"><a href="#fn:BCCplus16" class="footnote" rel="footnote">8</a></sup>和随机谕言<sup id="fnref:Mica98" role="doc-noteref"><a href="#fn:Mica98" class="footnote" rel="footnote">9</a></sup>。此外，$O(1)$群元素证明大小意义上的”简洁“SNARKs，也存在于RSA假设之上<sup id="fnref:LM18" role="doc-noteref"><a href="#fn:LM18" class="footnote" rel="footnote">10</a></sup>。当前，配对给予我们的，是具有最小的具体证明大小（即按照字节数计算）的SNARKs。</p>
+
+<p hidden="">$$
+\def\idt{\mathbb{1}_{\Gr_T}}
+\def\msk{\mathsf{msk}}
+\def\dsk{\mathsf{dsk}}
+\def\mpk{\mathsf{mpk}}
+$$</p>
+
+<h2 id="预备知识">预备知识</h2>
+
+<ul>
+  <li>熟悉素数阶循环群（例如椭圆曲线）</li>
+  <li>令 \(\idt\) 表示群 $\Gr_T$ 的单位元</li>
+  <li>令 $x \randget S$ 表示从集合 $S$ 中随机抽取一个元素 $x$</li>
+  <li>回顾 $\langle g \rangle = \Gr$ 表示 $g$ 是群 $\Gr$ 的生成元</li>
+</ul>
+
+<h2 id="配对的定义">配对的定义</h2>
+<p><em>配对</em>，也称为<em>双线性映射</em>，是一个在素数阶 $p$ 的三个群 $\Gr_1、\Gr_2$ 和 $\Gr_T$ 之间的函数 $e : \Gr_1 \times \Gr_2 \rightarrow \Gr_T$ ，其中生成元 $g_1 = \langle \Gr_1 \rangle，g_2 = \langle \Gr_2 \rangle$ ， $g_T = \langle \Gr_T \rangle$。</p>
+
+<p>当 $\Gr_1 = \Gr_2$ 时，称为 <strong>对称</strong>配对。 否则，是<strong>非对称</strong>配对。</p>
+
+<p>最重要的是，配对有两个对密码学有用的性质：<em>双线性</em>和<em>非退化性</em>。</p>
+
+<h3 id="双线性性">双线性性</h3>
+
+<p><em>双线性性</em>要求，对于所有 $u\in\Gr_1$、$v\in\Gr_2$ 和 $a,b\in\Zp$，有：
+\(e(u^a, v^b) = e(u, v)^{ab}\)</p>
+
+<p class="warning">考虑密码学，这是<strong>最酷</strong>的一个性质。 例如，这正是使<a href="#三方diffie-hellman">三方Diffie-Hellman</a> 等有用应用成为可能的原因。</p>
+
+<h3 id="非退化性">非退化性</h3>
+<p><em>非退化性</em>要求：
+\(e(g_1, g_2) \ne \idt\)</p>
+
+<p class="info"><strong>为什么有这个性质？</strong> 我们需要非退化性是因为没有它的话，定义一个（退化的）双线性映射是非常简单的（但没有用）。对于每个输入，返回 $\idt$即可。 这样的映射将满足双线性，但完全没有用。</p>
+
+<h3 id="高效性">高效性</h3>
+<p><em>高效性</em>要求存在群元素的大小（即 $\lambda = \log_2{p}$ 中）上的多项式时间算法，可用于求出任意输入上的配对 $e$。</p>
+
+<details>
+<summary><b>为什么要有这个要求</b> 排除了平凡但计算上困难的配对。 <i>（点击展开。）</i></summary>
+<p style="margin-left: .3em; border-left: .15em solid black; padding-left: .5em;">
+例如，假设 $r$ 是 $\Gr_T$ 中的一个随机元素。
+首先，将配对定义为 $e(g_1, g_2) = r$。
+这样，配对满足<em>非退化性</em>。
+<br /><br />
+
+其次，给定 $(u,v)\in \Gr_1 \times \Gr_2$，算法可以花费指数时间 $O(2^\lambda)$ 来计算离散对数 $x = \log_ {g_1}{(u)}$ 和 $y = \log_{g_2}{(v)}$ 并返回 $e(u, v) = e(g_1^x, g_2^y) = r^{xy}$。
+这样，配对满足<em>双线性性</em>因为：
+<br /><br />
+
+\begin{align}
+e(u^a, v^b)
+    &amp;= e\left((g_1^x)^a, (g_2^y)^b\right)\\\
+    &amp;= e\left(g_1^{(ax)}, g_2^{(by)}\right)\\\
+    &amp;= r^{(ax)\cdot (by)}\\\
+    &amp;= \left(r^{xy}\right)^{ab}\\\
+    &amp;= e(u, v)^{ab}
+\end{align}
+</p>
+</details>
+
+<h2 class="warning" id="历史">历史</h2>
+<p>这是我对配对历史的有限理解，主要来自 <a href="https://www.youtube.com/watch?v=1RwkqZ6JNeo">此视频中 Dan Boneh 的叙述</a> 以及我自己对相关文献的研究。 如果你知道更多历史，请给我发电子邮件，我可以尝试将其合并。</p>
+
+<h3 id="监狱里的数学家">监狱里的数学家</h3>
+<p>（密码学）配对的历史始于一位名叫 <strong>André Weil</strong><sup id="fnref:Wiki22Weil" role="doc-noteref"><a href="#fn:Wiki22Weil" class="footnote" rel="footnote">11</a></sup> 的数学家，他在二战期间因拒绝在法国军队服役而入狱。
+在那里，Weil，“设法说服了思想开明的监狱长将 [他] 关在一个单独的牢房里，[他] 被允许保留 [..] 笔、墨水和纸。”</p>
+
+<p>Weil 使用这些他新获得的工具定义出了跨两个椭圆曲线群的配对。
+<strong>然而</strong>，当时<strong>非常奇怪</strong>的是，Weil 付出了很多努力来确保他对配对的定义是<em>可计算的</em>。
+这种额外的努力使今天基于配对的密码学成为了可能<sup id="fnref:danboneh-shimuranote" role="doc-noteref"><a href="#fn:danboneh-shimuranote" class="footnote" rel="footnote">12</a></sup>。</p>
+
+<h3 id="去监狱不去大学">去监狱，不去大学？</h3>
+<p>有趣的是，韦尔在监狱里的时间是如此富有高效率，以至于他开始考虑是否应该每年在那里度过几个月。
+更好的是，Weil 考虑他是否应该<strong>向有关当局建议每个数学家都要在监狱里度过一段时间。</strong>
+Weil 写道：</p>
+
+<blockquote>
+  <p>我开始认为没有什么比监狱更有利于抽象科学了。</p>
+
+  <p>[…]</p>
+
+  <p>我的数学工作进展出乎我的意料，我甚至有点担心——如果我只是在监狱里学得这么好，我是否每年都要安排关押两三个月？</p>
+
+  <p>与此同时，我正在考虑向有关当局写一份报告，如下：“致科学研究主任：最近经由个人经验发现了一个可以对纯粹和无私的研究提供相当大的优势的方法，即留在监狱系统的设施中，我冒昧地请求……。”</p>
+</blockquote>
+
+<p>你可以在他引人入胜的自传中读到所有这些以及更多的内容，该自传是从他作为数学家的角度写成的<sup id="fnref:Weil92" role="doc-noteref"><a href="#fn:Weil92" class="footnote" rel="footnote">13</a></sup>。</p>
+
+<h3 id="从破解密码学到构建密码学">从破解密码学到构建密码学</h3>
+
+<p>Weil 的工作是基础。
+但是，基于配对的密码学的兴起还需要三个进展。</p>
+
+<h4 id="第一个进展miller算法">第一个进展：Miller算法</h4>
+<p>1985 年，<strong>Victor Miller</strong> 撰写了一份手稿，表明实际上可以在多项式时间内有效地计算 Weil 配对（其本身实际上涉及指数阶多项式求值） <sup id="fnref:Mill86Short" role="doc-noteref"><a href="#fn:Mill86Short" class="footnote" rel="footnote">14</a></sup>。</p>
+
+<p>1984 年 12 月，Miller在 IBM 发表了关于椭圆曲线密码学的演讲，他声称椭圆曲线离散对数比有限域上的普通离散对数更难计算 <sup id="fnref:miller-talk" role="doc-noteref"><a href="#fn:miller-talk" class="footnote" rel="footnote">15</a></sup>。
+Miller 受到了在场的 Manuel Blum 的挑战，要求他通过<a href="https://en.wikipedia.org/wiki/Reduction_(complexity)">归约</a> 来支持这一说法：即，表明用于求解椭圆曲线上的离散对数的算法$B$可以有效地转换为另一种用于求解有限域中的离散对数的算法$A$。
+这种归约意味着$B$解决的问题（即计算椭圆曲线离散对数）至少与$A$解决的问题（即计算有限域离散对数）一样难，如果不是更难的话。</p>
+
+<p>Miller 着手通过思考唯一能将椭圆曲线群和有限域关联起来的事物–Weil配对，来试图找到归约。
+有趣的是，他很快意识到，虽然 Weil 配对给出了一个归约，但是在相反的方向上的：即事实上，在 Weil 配对的帮助下，有限域中离散对数的算法 $A$ 可以有效地转化为椭圆曲线中的离散对数的算法 $B$ 。
+这种“不想要的”的归约可以很容易看出来。
+由于 $e(g^a, g) = e(g,g)^a$，求解椭圆曲线元素 $g_a\in \Gr$ 上的离散对数只要求解 $e(g,g )^a\in \Gr_T$，它实际上是有限域的乘法子群（参见 <a href="#配对到底是怎么做的">配对到底是怎么做的？</a>）。</p>
+
+<p>这几乎与 Miller 试图证明的相反，可能会使得整个椭圆曲线密码学崩溃，但幸运的是，Weil 配对映射到的扩域的阶太大，使得这种“不想要的”归约效率低下，因此也就根本不是一个归约。</p>
+
+<p>整个事件让 Miller 对是否可以高效地计算 Weil 配对产生了兴趣，这导致了他算法的发现。
+有趣的是，他将这篇手稿投给了顶级理论计算机科学会议 FOCS，但这篇论文被拒了，直到很久以后才发表在JoC上（根据 Miller 的说法）<sup id="fnref:alin-where" role="doc-noteref"><a href="#fn:alin-where" class="footnote" rel="footnote">16</a></sup>。</p>
+
+<h4 id="第二个进展mov攻击">第二个进展：MOV攻击</h4>
+<p>1991 年，<strong>Menezes、Vanstone 和 Okamoto</strong><sup id="fnref:MVO91" role="doc-noteref"><a href="#fn:MVO91" class="footnote" rel="footnote">17</a></sup> 利用 Miller 的高效算法来求 Weil 配对，攻破了特定椭圆曲线上<strong>在亚指数时间内</strong>的离散对数假设。
+这是非常惊人的，因为当时还没有已知的用于椭圆曲线的亚指数时间算法。</p>
+
+<p class="info">他们的攻击称为<em>MOV 攻击</em>，将椭圆曲线离散对数挑战 $g^a\in\Gr$ 使用配对映射到<strong>目标群</strong> $e(g^a, g)=e(g,g)^ a \in \Gr_T$ 。
+由于目标群是有限域 $\mathbb{F}_q^{k}$ 的子群，这就可以使用更快的亚指数时间算法来计算 $e(g,g)^a$ 上的离散对数。</p>
+
+<h4 id="第三个进展joux的三方diffie-hellman">第三个进展：Joux的三方Diffie-Hellman</h4>
+<p>到目前为止，配对似乎只对<strong>密码分析</strong>有用。
+没有人知道如何使用它们来构造（而不是破解）密码学。</p>
+
+<p>这在 2000 年发生了变化，那时 <strong>Joux</strong><sup id="fnref:Joux00" role="doc-noteref"><a href="#fn:Joux00" class="footnote" rel="footnote">18</a></sup> 使用配对在三方之间实现了单轮密钥交换协议，即 <a href="#三方diffie-hellman">三方Diffie-Hellman</a> 
+以前，已知的这种单轮协议仅在两方之间，而三方需要 2 轮。</p>
+
+<p>从那时开始，大量新的、高效的密码学开始涌现：</p>
+
+<ul>
+  <li>BLS（短）签名<sup id="fnref:BLS01:1" role="doc-noteref"><a href="#fn:BLS01" class="footnote" rel="footnote">4</a></sup></li>
+  <li>基于身份的加密<sup id="fnref:BF01:1" role="doc-noteref"><a href="#fn:BF01" class="footnote" rel="footnote">5</a></sup></li>
+  <li>支持一次乘法的加法同态加密<sup id="fnref:BGN05" role="doc-noteref"><a href="#fn:BGN05" class="footnote" rel="footnote">19</a></sup></li>
+  <li>简洁零知识证明<sup id="fnref:GGPR12e:1" role="doc-noteref"><a href="#fn:GGPR12e" class="footnote" rel="footnote">1</a></sup></li>
+</ul>
+
+<p class="info">请注意这里有趣的模式：配对如何从用于破解密码系统的<em>密码分析工具</em>演变为用于构造密码系统的<strong>建设性工具</strong>的。
+有趣的是，同样的模式也出现在了基于格的密码学的发展中。</p>
+
+<h2 id="配对的算术技巧">配对的算术技巧</h2>
+<p>在密码系统的正确性或安全性证明中处理配对时，密码学家经常会使用一些技巧。</p>
+
+<p>最明显的技巧，<strong>“指数上相乘”</strong>，来自双线性性。</p>
+
+<p>\begin{align}
+e(u^a, v^b) = e(u, v)^{ab}
+\end{align}</p>
+
+<p>双线性性也蕴含着下述技巧：
+\begin{align}
+e(u, v^b) = e(u, v)^b
+\end{align}
+或者：
+\begin{align}
+e(u^a, v) = e(u, v)^a
+\end{align}</p>
+
+<p>另一个技巧如下，这只是定义双线性性的一种类似方式：
+\begin{align}
+e(u, v\cdot w) = e(u, v)\cdot e(u, w)
+\end{align}</p>
+
+<p class="info"><strong>为什么这是对的？</strong> 令 $y,z$ 分别表示 $v$ 和 $w$ 的离散对数 (关于 $g_2$的)。
+然后，我们有：
+\begin{align}
+e(u, v\cdot w) 
+    &amp;= e(u, g_2^y \cdot g_2^z)\\<br />
+    &amp;= e(u, g_2^{y + z})\\<br />
+    &amp;= e(u, g_2)^{y + z}\\<br />
+    &amp;= e(u, g_2)^y \cdot e(u, g_2)^z\\<br />
+    &amp;= e(u, g_2^y) \cdot e(u, g_2^z)\\<br />
+    &amp;= e(u, v)\cdot e(u, w)
+\end{align}</p>
+
+<p>或者：
+\begin{align}
+e(u, v / w) = \frac{e(u, v)}{e(u, w)}
+\end{align}</p>
+
+<h2 id="配对的应用">配对的应用</h2>
+
+<h3 id="三方diffie-hellman">三方Diffie-Hellman</h3>
+
+<p>该协议由 Joux 在 2000 年 <sup id="fnref:Joux00:1" role="doc-noteref"><a href="#fn:Joux00" class="footnote" rel="footnote">18</a></sup> 引入，使用<strong>对称配对</strong>：即，其中 \(\Gr_1 = \Gr_2 = \langle g\rangle \stackrel{\mathsf{def}}{=} \Gr\)。</p>
+
+<p>我们有三个参与方 Alice、Bob 和 Charles，他们分别拥有私钥 $a、b$ 和 $c$。
+他们互相发送他们的公钥 $g^a, g^b, g^c$ 并得到共享密钥 $k = e(g, g)^{abc}$。<sup id="fnref:dhe" role="doc-noteref"><a href="#fn:dhe" class="footnote" rel="footnote">20</a></sup></p>
+
+<p>怎么做到？</p>
+
+<p>考虑Alice的视角。
+她从 Bob 和 Charles 那里得到 $g^b$ 和 $g^c$。
+首先，她可以使用她的秘密 $a$ 来计算 $g^{ab}$。
+其次，她可以使用配对来计算 $e(g^{ab}, g^c) = e(g, g)^{abc} = k$。</p>
+
+<p>通过对称性，所有其他参与者都可以做同样的事情并就相同的 $k$ 达成一致。</p>
+
+<p class="info">该协议也可以推广到 <a href="#配对的定义"><strong>非</strong>对称配对</a>，其中 $\Gr_1 \neq \Gr_2$。</p>
+
+<h3 id="bls-签名">BLS 签名</h3>
+
+<p>Boneh、Lynn 和 Shacham 使用配对<sup id="fnref:BLS01:2" role="doc-noteref"><a href="#fn:BLS01" class="footnote" rel="footnote">4</a></sup> 给出了一个非常短的签名方案，其工作原理如下：</p>
+
+<ul>
+  <li>假设 $\Gr_2 = \langle g_2 \rangle$ 且存在一个哈希函数 $H : \{0,1\}^* \rightarrow \Gr_1$ ，建模为随机谕言。</li>
+  <li>私钥是 $s \in \Zp$ 而公钥是 $\pk = g_2^s \in \Gr_2$。</li>
+  <li>要对消息 $m$ 签名，签名者计算 $\sigma = H(m)^s\in \Gr_1$。</li>
+  <li>要在公钥 $\pk$ 下验证 $m$ 上的签名 $\sigma$，检查 $e(\sigma, g_2) \stackrel{?}{=} e(H(m), \pk) $ 是否成立。</li>
+</ul>
+
+<p>请注意，正确计算的签名将始终可以通过验证，因为：
+\begin{align}
+e(\sigma, g_2) \stackrel{?}{=} e(H(m), \pk) \Leftrightarrow\\<br />
+e(H(m)^s, g_2) \stackrel{?}{=} e(H(m), g_2^s) \Leftrightarrow\\<br />
+e(H(m), g_2)^s \stackrel{?}{=} e(H(m), g_2)^s \Leftrightarrow\\<br />
+e(H(m), g_2) = e(H(m), g_2)
+\end{align}</p>
+
+<p>请参阅 BLS 论文 <sup id="fnref:BLS01:3" role="doc-noteref"><a href="#fn:BLS01" class="footnote" rel="footnote">4</a></sup>，关于如何证明没有攻击者可以在访问 $\pk$ 和签名谕言的情况下伪造 BLS 签名。</p>
+
+<h4 id="bls签名的酷炫性质">BLS签名的酷炫性质</h4>
+<p>BLS 签名非常棒：</p>
+
+<ol>
+  <li>如果可以访问椭圆曲线库，它是实现<strong>最简单</strong>的方案之一。</li>
+  <li>可以<strong>聚合</strong>同一消息 $m$ 上来自不同公钥的许多签名到一个单一的<em>多重签名</em>中，继续仅使用 2 个配对验证。</li>
+  <li>甚至可以将不同消息中的此类签名<strong>聚合</strong>为一个<em>聚合签名</em>。
+    <ul>
+      <li>然而，这样的聚合签名需要 $n+1$ 个配对来验证。</li>
+    </ul>
+  </li>
+  <li>可以轻松高效地<sup id="fnref:TCZplus20" role="doc-noteref"><a href="#fn:TCZplus20" class="footnote" rel="footnote">21</a></sup>构造<strong>门限</strong>BLS签名方案，其中$n$个签名者中$\ge t$的任意子集可以协作签署消息$m$，但没有少于 $t$ 的子集可以产生有效的签名。
+    <ul>
+      <li>更好的是，BLS 门限签名是<strong>确定性的</strong>，从而支持<em>门限可验证随机函数 (VRF)</em>，这对于在链上生成随机性很有用。</li>
+    </ul>
+  </li>
+  <li>可以定义非常高效的 BLS 签名的 <strong>盲化</strong> 变体，其中签名者可以在不知道消息 $m$ 的情况下签署消息 $m$。</li>
+  <li>BLS签名在实践中非常<strong>高效</strong>。
+    <ul>
+      <li>据我所知，是 (1) 多重签名、(2) 聚合签名和 (3) 门限签名的最高效的方案</li>
+      <li>对于单签名者 BLS，在非配对友好曲线上比 Schnorr 签名慢</li>
+    </ul>
+  </li>
+</ol>
+
+<p class="warning">如果你对多重签名、聚合签名和门限签名的各种概念感到困惑，请参阅<a href="https://docs.google.com/presentation/d/1G4XGqrBLwqMyDQce_xpPQUEMOK4lFrneuvGYU3MVDsI/edit?usp=sharing">我的幻灯片</a>。</p>
+
+<h3 id="身份基加密-ibe">身份基加密 (IBE)</h3>
+
+<p>在 IBE 方案中，可以直接用用户友好的电子邮件地址（或电话号码）来加密，而不是用难以记住或正确输入的繁琐公钥。</p>
+
+<p>Boneh 和 Franklin 基于配给出了一个非常有效的 IBE 方案 <sup id="fnref:BF01:2" role="doc-noteref"><a href="#fn:BF01" class="footnote" rel="footnote">5</a></sup>。</p>
+
+<p>IBE正常运作必须引入一个称为<strong>私钥生成者 (PKG)</strong> 的可信第三方 (TTP)，该第三方将根据用户的电子邮件地址向用户颁发密钥。
+这个 PKG 有一个 <strong>主密钥 (MSK)</strong> $\msk \in \Zp$ 和一个关联的 <strong>主公钥 (MPK)</strong> $\mpk = g_2^s$，其中 $\langle g_2 \rangle = \Gr_2$。</p>
+
+<p>$\mpk$ 是公开的，可用于给任意用户（给定电子邮件地址）加密消息。
+至关重要的是，PKG 必须对 $\msk$ 保密。
+否则，窃取它的攻击者可以导出任何用户的密钥并解密每个人的消息。</p>
+
+<p class="warning">如你所知，PKG 是一个中心故障点：盗窃 $\msk$ 会危及每个人的机密。
+为了缓解这种情况，可以将 PKG 分散到多个权威机构中，这样就必须攻破一定数量的权威机构才能窃取 $\msk$。</p>
+
+<p>令 $H_1 : \{0,1\}^* \rightarrow \Gr_1^*$ 和 $H_T : \Gr_T \rightarrow \{0,1\}^n$ 是两个哈希函数，建模为随机谕言。
+要加密发送给电子邮件地址为 $id$ 的用户的 $n$ 比特消息 $m$，需要计算：
+\begin{align}
+    g_{id} &amp;= e(H_1(id), \mpk) \in \Gr_T\\<br />
+    r &amp;\randget \Zp\\<br />
+    \label{eq:ibe-ctxt}
+    c &amp;= \left(g_2^r, m \xor H_T\left(\left(g_{id}\right)^r\right)\right) \in \Gr_2\times \{0,1\}^n
+\end{align}</p>
+
+<p>要解密，电子邮件地址为 $id$ 的用户必须首先从 PKG 获取他们的<strong>解密密钥</strong> $\dsk_{id}$。
+为此，我们假设 PKG 有一种方法可以在将密钥交给用户之前对用户进行身份验证。
+例如，这可以通过电子邮件完成。</p>
+
+<p>PKG 将用户的解密密钥计算为：
+\begin{align}
+    \dsk_{id} = H_1(id)^s \in \Gr_1
+\end{align}</p>
+
+<p>现在用户有了他们的解密密钥，他们可以将方程 $\ref{eq:ibe-ctxt}$ 中的密文 $c = (u, v)$ 解密为：
+\begin{align}
+    m &amp;= v \xor H_T(e(\dsk_{id}, u))
+\end{align}</p>
+
+<p>你可以看到为什么正确加密的密文将成功解密，因为：
+\begin{align}
+v \xor H_T(e(\dsk_{id}, u))
+    &amp;= \left(m \xor       H_T\left((g_{id})^r            \right)\right) \xor H_T\left(e(H_1(id)^s, g_2^r)     \right)\\<br />
+    &amp;= \left(m \xor       H_T\left(e(H_1(id), \mpk )^r   \right)\right) \xor H_T\left(e(H_1(id),   g_2  )^{rs}\right)\\<br />
+    &amp;=       m \xor \left(H_T\left(e(H_1(id), g_2^s)^r   \right)        \xor H_T\left(e(H_1(id),   g_2  )^{rs}\right)\right)\\<br />
+    &amp;=       m \xor \left(H_T\left(e(H_1(id), g_2  )^{rs}\right)        \xor H_T\left(e(H_1(id),   g_2  )^{rs}\right)\right)\\<br />
+    &amp;= m
+\end{align}</p>
+
+<p>要了解为什么该方案在选择明文攻击下是安全的，请参阅原始论文<sup id="fnref:BF01:3" role="doc-noteref"><a href="#fn:BF01" class="footnote" rel="footnote">5</a></sup>。</p>
+
+<h2 id="配对到底是怎么做的">配对到底是怎么做的？</h2>
+<p>大多数情况下，我也完全不知道。
+怎么会呢？
+好吧，我真的不需要知道。
+这正是配对的美妙之处：人们可以以一种黑盒方式使用它们，而对其内部结构的了解为零。</p>
+
+<p>不过，让我们来看一下这个黑盒子的内部。
+让我们考虑流行的配对友好曲线 <em>BLS12-381</em> <sup id="fnref:Edgi22" role="doc-noteref"><a href="#fn:Edgi22" class="footnote" rel="footnote">22</a></sup>，它来自以 Barreto、Lynn 和 Scott 命名的 BLS 曲线家族 <sup id="fnref:BLS02e" role="doc-noteref"><a href="#fn:BLS02e" class="footnote" rel="footnote">23</a></sup>。</p>
+
+<p class="warning"><strong>公共服务声明：</strong>
+你们中的一些人可能听说过<em>Boneh-Lynn-Shacham (BLS)</em> 签名。 请注意，这与 <em>Barretto-Lynn-Scott</em> 曲线中的 BLS 不同。 令人困惑的是，这两个首字母缩略词都有一个共同的作者，Ben Lynn。 （如果这还不够令人困惑，等你必须在 BLS12-381 曲线上使用 BLS 签名时就知道了。）</p>
+
+<p>对于BLS12-381，涉及到的三个群$\Gr_1, \Gr_2, \Gr_T$分别是：</p>
+
+<ul>
+  <li>群 $\Gr_1$ 是椭圆曲线 $E(\F_q) = \left\{(x, y) \in (\F_q)^2\ \vert\ y^2 = x ^3 + 4 \right\}$的子群， 其中 $\vert\Gr_1\vert = p$</li>
+  <li>群 $\Gr_2$ 是一个不同的椭圆曲线$E’(\F_{q^2}) = \left\{(x, y) \in (\F_{q^2} )^2\ \vert\ y^2 = x^3 + 4(1+i) \right\}$的子群，其中 $i$ 是 $-1$ 的平方根且 $\vert\Gr_2\vert = p $。</li>
+  <li>群 $\Gr_T$ 是 $\F_{q^{k}}$ 中的所有的第 $p$ 个单位根，其中 $k=12$ 称为<em>嵌入度</em></li>
+</ul>
+
+<p>那么这三个群的配对映射是如何工作的？ 配对 $e(\cdot,\cdot)$ 可以展开为如下内容：
+\begin{align}
+\label{eq:pairing-def}
+e(u, v) = f_{p, u}(v)^{(q^k - 1)/p}
+\end{align}</p>
+
+<p>知道计算配对包括两个步骤是很有用的：</p>
+
+<ol>
+  <li>求出基 $f_{p, u}(v)$，也称为 <strong>Miller 循环</strong>，以纪念 <a href="#历史">Victor Miller 的工作</a></li>
+  <li>基于这个基上求常数的 $(q^k - 1)/p$作为指数，也称为<strong>最终指数</strong>。
+    <ul>
+      <li>这一步比第一步昂贵几倍</li>
+    </ul>
+  </li>
+</ol>
+
+<p>有关内部结构的更多信息，请参阅其他资源 <sup id="fnref:Cost12" role="doc-noteref"><a href="#fn:Cost12" class="footnote" rel="footnote">24</a></sup>$^,$<sup id="fnref:GPS08" role="doc-noteref"><a href="#fn:GPS08" class="footnote" rel="footnote">25</a></sup>$^,$<sup id="fnref:Mene05" role="doc-noteref"><a href="#fn:Mene05" class="footnote" rel="footnote">26</a></sup>。</p>
+
+<h2 id="基于配对密码学的实现">基于配对密码学的实现</h2>
+<p>本节讨论从业者可以用来加速实现的各种实现级细节。</p>
+
+<h3 id="使用非对称配对">使用非对称配对！</h3>
+
+<p>BLS12-381 上的配对是<strong>非对称</strong>的：即，$\Gr_1\ne\Gr_2$ 是两个<strong>不同的</strong>群（相同的阶 $p$）。 但是，也存在<strong>对称</strong>配对，其中 $\Gr_1 = \Gr_2$ 是同一个群。</p>
+
+<p>不幸的是，“这种对称配对只存在于超奇异曲线上，这对协议的效率和安全性都会产生严重限制”<sup id="fnref:BCMplus15e" role="doc-noteref"><a href="#fn:BCMplus15e" class="footnote" rel="footnote">27</a></sup>。
+换句话说，这种超奇异曲线在相同安全级别上不如<strong>非</strong>对称配对中使用的曲线高效。</p>
+
+<p>因此，据我所知，今天的从业者完全依赖<strong>非</strong>对称配对，因为它们在安全级别保持不变时效率更高。</p>
+
+<h3 id="bls12-381-性能">BLS12-381 性能</h3>
+
+<p>我将为在 Filecoin 的 (<a href="https://github.com/filecoin-project/blstrs">blstrs</a> 中实现的 BLS12-381 曲线提供一些关键性能的数据，blstrs是流行的<a href="https://github.com/supranational/blst">blst</a>库的一个Rust包裹。</p>
+
+<p>这些微基准测试使用<code class="language-plaintext highlighter-rouge">cargo bench</code>，在 10 核 2021 Apple M1 Max 上运行。</p>
+
+<h4 id="配对计算时间">配对计算时间</h4>
+
+<!--
+	alinush@MacBook [~/repos/blstrs] (master %) $ cargo +nightly bench -- pairing_
+	running 4 tests
+	test bls12_381::bench_pairing_final_exponentiation     ... bench:     276,809 ns/iter (+/- 1,911)
+	test bls12_381::bench_pairing_full                     ... bench:     484,718 ns/iter (+/- 2,510)
+	test bls12_381::bench_pairing_g2_preparation           ... bench:      62,395 ns/iter (+/- 4,161)
+	test bls12_381::bench_pairing_miller_loop              ... bench:     148,534 ns/iter (+/- 1,203)
+-->
+
+<p>正如式\ref{eq:pairing-def}中所解释的那样，配对涉及两个步骤：</p>
+
+<ul>
+  <li>Miller循环计算
+    <ul>
+      <li>210 微秒</li>
+    </ul>
+  </li>
+  <li>最终指数
+    <ul>
+      <li>276 微秒</li>
+    </ul>
+  </li>
+</ul>
+
+<p>因此，一次配对大约需要 486 微秒（即两者之和）。</p>
+
+<h4 id="求指数时间">求指数时间</h4>
+
+<p class="warning">$\Gr_T$ 微基准测试是通过稍微修改<code class="language-plaintext highlighter-rouge">blstrs</code>的基准测试代码 （<a href="https://github.com/filecoin-project/blstrs/blob/e70aff6505fb6f87f9a13e409c080995bd0f244e/benches/bls12_381/ec.rs#L10">此处</a>） 完成的 。
+（有关这些修改，请参阅本页的 HTML 注释。）</p>
+
+<!--
+	alinush@MacBook [~/repos/blstrs] (master *%) $ git diff
+	diff --git a/benches/bls12_381/ec.rs b/benches/bls12_381/ec.rs
+	index 639bcad..8dcec20 100644
+	--- a/benches/bls12_381/ec.rs
+	+++ b/benches/bls12_381/ec.rs
+	@@ -167,3 +167,34 @@ mod g2 {
+			 });
+		 }
+	 }
+	+
+	+mod gt {
+	+    use rand_core::SeedableRng;
+	+    use rand_xorshift::XorShiftRng;
+	+
+	+    use blstrs::*;
+	+    use ff::Field;
+	+    use group::Group;
+	+
+	+    #[bench]
+	+    fn bench_gt_mul_assign(b: &mut ::test::Bencher) {
+	+        const SAMPLES: usize = 1000;
+	+
+	+        let mut rng = XorShiftRng::from_seed([
+	+            0x59, 0x62, 0xbe, 0x5d, 0x76, 0x3d, 0x31, 0x8d, 0x17, 0xdb, 0x37, 0x32, 0x54, 0x06,
+	+            0xbc, 0xe5,
+	+        ]);
+	+
+	+        let v: Vec<(Gt, Scalar)> = (0..SAMPLES)
+	+            .map(|_| (Gt::random(&mut rng), Scalar::random(&mut rng)))
+	+            .collect();
+	+
+	+        let mut count = 0;
+	+        b.iter(|| {
+	+            let mut tmp = v[count].0;
+	+            tmp *= v[count].1;
+	+            count = (count + 1) % SAMPLES;
+	+            tmp
+	+        });
+	+    }
+	+}
+	alinush@MacBook [~/repos/blstrs] (master *%) $ cargo +nightly bench -- mul_assign
+	   Compiling blstrs v0.6.1 (/Users/alinush/repos/blstrs)
+		Finished bench [optimized] target(s) in 0.75s
+		 Running unittests src/lib.rs (target/release/deps/blstrs-349120dc60ef3711)
+
+	running 2 tests
+	test fp::tests::test_fp_mul_assign ... ignored
+	test scalar::tests::test_scalar_mul_assign ... ignored
+
+	test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 115 filtered out; finished in 0.00s
+
+		 Running benches/blstrs_benches.rs (target/release/deps/blstrs_benches-a6732e3e4e5c6a4d)
+
+	running 4 tests
+	test bls12_381::ec::g1::bench_g1_mul_assign            ... bench:      72,167 ns/iter (+/- 1,682)
+	test bls12_381::ec::g2::bench_g2_mul_assign            ... bench:     136,184 ns/iter (+/- 1,300)
+	test bls12_381::ec::gt::bench_gt_mul_assign            ... bench:     497,330 ns/iter (+/- 7,802)
+	test bls12_381::scalar::bench_scalar_mul_assign        ... bench:          14 ns/iter (+/- 0)
+
+	test result: ok. 0 passed; 0 failed; 0 ignored; 4 measured; 21 filtered out; finished in 5.30s
+-->
+
+<ul>
+  <li>$\Gr_1$ 求指数是最快的
+    <ul>
+      <li>72 微秒</li>
+    </ul>
+  </li>
+  <li>$\Gr_2$ 求指数大约慢2倍
+    <ul>
+      <li>136 微秒</li>
+    </ul>
+  </li>
+  <li>$\Gr_T$ 求指数比 $\Gr_2$ 慢大约3.5倍
+    <ul>
+      <li>500 微秒</li>
+    </ul>
+  </li>
+</ul>
+
+<p class="info"><strong>注意：</strong>这些基准测试随机选择取幂的基，并且<strong>不</strong>对其执行任何预计算，预计算会将这些时间加快 2-4 倍。</p>
+
+<h4 id="多指数">多指数</h4>
+<p>这是一个众所周知的优化，为了完整起见，我将其包括在内。</p>
+
+<p>具体来说，许多库可以使得计算$k$ 次指数运算的乘积 $\prod_{0 &lt; i &lt; k} \left(g_i\right)^{x_i}$ 比单独计算 $k$ 次指数再聚合它们的乘积要快很多。</p>
+
+<p>例如，<a href="https://github.com/filecoin-project/blstrs">blstrs</a> 在这方面似乎快得令人难以置信：</p>
+
+<!--
+running 4 tests
+test bls12_381::bench_g1_multi_exp                     ... bench:     760,554 ns/iter (+/- 47,355)
+test bls12_381::bench_g1_multi_exp_naive               ... bench:  18,575,716 ns/iter (+/- 42,688)
+test bls12_381::bench_g2_multi_exp                     ... bench:   1,876,416 ns/iter (+/- 58,743)
+test bls12_381::bench_g2_multi_exp_naive               ... bench:  35,272,720 ns/iter (+/- 266,279)
+-->
+
+<ul>
+  <li>$\Gr_1$ 中的大小为 256 的多指数运算
+    <ul>
+      <li>总共需要 760 微秒，或者每次指数需要 3 微秒！</li>
+      <li>朴素方法共需要 18.5 毫秒，慢24倍</li>
+    </ul>
+  </li>
+  <li>$\Gr_2$ 中的大小为 256 的多指数运算
+    <ul>
+      <li>总共需要 1.88 毫秒，或者每次指数需要 7.33 微秒！</li>
+      <li>朴素方法共需要 35.3 毫秒，慢18.8倍</li>
+    </ul>
+  </li>
+</ul>
+
+<h4 id="群元素大小">群元素大小</h4>
+<ul>
+  <li>$\Gr_1$群元素是最小的
+    <ul>
+      <li>例如，BLS12-381 为 48 字节， BN254 曲线为 32 字节<sup id="fnref:BN06Pair" role="doc-noteref"><a href="#fn:BN06Pair" class="footnote" rel="footnote">28</a></sup></li>
+    </ul>
+  </li>
+  <li>$\Gr_2$ 群元素大2倍
+    <ul>
+      <li>例如，BLS12-381 为 96 字节</li>
+    </ul>
+  </li>
+  <li>$\Gr_T$ 元素大 12 倍
+    <ul>
+      <li>通常，对于具有<em>嵌入度</em> $k$ 的配对友好曲线，大 $k$ 倍</li>
+    </ul>
+  </li>
+</ul>
+
+<h4 id="交换gr_1-和-gr_2">交换$\Gr_1$ 和 $\Gr_2$</h4>
+<p>在设计基于配对的密码协议时，需要仔细考虑选择使用 $\Gr_1$ 和使用 $\Gr_2$ 的目的。</p>
+
+<p>例如，在 BLS 签名中，如果想要更小的签名，那么应该计算签名 $\sigma = H(m)^s \in \Gr_1$ 并在 $\Gr_2$ 中设置稍大的公钥。
+另一方面，如果想要最小化公钥大小，那么可以将它放在 $\Gr_1$ 中，同时花费较长的时间来计算 $\Gr_2$ 中的签名。</p>
+
+<p class="warning">其他因素也会影响使用 $\Gr_1$ 和 $\Gr_2$ 的方式，例如同构 $\phi : \Gr_2 \rightarrow \Gr_1$ 的存在或均匀哈希到这些群中的能力。
+事实上，这种同构的存在将非对称配对进一步分为两种类型：类型 2 和类型 3（有关不同类型配对的更多信息，请参阅 <em>Galbraith 等人</em><sup id="fnref:GPS08:1" role="doc-noteref"><a href="#fn:GPS08" class="footnote" rel="footnote">25</a></sup>）</p>
+
+<h4 id="和非配对友好椭圆曲线的比较">和非配对友好椭圆曲线的比较</h4>
+<p>与不支持配对的椭圆曲线相比，配对友好的椭圆曲线要慢两倍左右。</p>
+
+<p>例如，流行的素数阶椭圆曲线群 <a href="https://ristretto.group/">Ristretto255</a> 提供：</p>
+
+<!--
+ristretto255/basepoint_mul
+                        time:   [10.259 µs 10.263 µs 10.267 µs]
+
+ristretto255/point_mul  time:   [40.163 µs 40.187 µs 40.212 µs]
+-->
+
+<ul>
+  <li>求指数 40 微秒，快$\approx 2\times$
+    <ul>
+      <li>当基数固定时使用预计算可以加速到 10 微秒</li>
+    </ul>
+  </li>
+  <li>群元素大小32 字节</li>
+</ul>
+
+<h3 id="多配对">多配对</h3>
+<p>如果你还记得配对的实际工作方式（参见式 $\ref{eq:pairing-def}$），你会注意到以下优化：</p>
+
+<p>每当我们必须计算 $n$ 个配对的乘积时，我们可以先计算 $n$ 次Miller循环并进行一次最终指数而不是 $n$ 次。
+这大大减少了许多应用中的配对计算时间。</p>
+
+<p>\begin{align}
+\prod_i e(u_i, v_i)
+    &amp;= \prod_i \left(f_{p, u_i}(v_i)^{(q^k - 1)/p}\right)\\<br />
+    &amp;= \left(\prod_i f_{p, u_i}(v_i)\right)^{(q^k - 1)/p}
+\end{align}</p>
+
+<h2 id="结论">结论</h2>
+<p>本文本来应该只是<a href="#配对的定义">配对的三个性质</a> 的一个简短总结：双线性性、非退化性和高效性。</p>
+
+<p>不幸的是，我觉得很有必要去讨论下其<a href="#历史">迷人的历史</a>。
+而且我不能让你在没有看到一些强大的 <a href="#配对的应用">配对的密码学应用</a> 的情况下离开。</p>
+
+<p>之后，我意识到实现基于配对的密码系统的从业者可能会受益于了解其<a href="#how-do-pairings-actually-work">内部工作机制</a>，因为可以利用其中一些细节来加速<a href="#implementation-details">实现</a>。</p>
+
+<h2 id="致谢">致谢</h2>
+
+<p>我要感谢 Dan Boneh 帮助我澄清和了解 Weil 相关的历史，以及 <a href="https://www.youtube.com/watch?v=1RwkqZ6JNeo">他在 2015 年 Simons 的演讲</a>，这启发了我 做更多的研究并写下了这个历史记录。</p>
+
+<p>非常感谢：</p>
+
+<ul>
+  <li><a href="https://twitter.com/cronokirby">Lúcás Meier</a>、<a href="https://twitter.com/zkproofs">Pratyush Mishra</a>、<a href="https://twitter.com/rel_zeta_tech">Ariel Gabizon</a> 和 <a href="https://twitter.com/dariofiore0"> Dario Fiore</a>，感谢他们关于“简洁”(S) 在 <strong>S</strong>NARKs<sup id="fnref:GW10:1" role="doc-noteref"><a href="#fn:GW10" class="footnote" rel="footnote">7</a></sup> 中代表什么的启发性观点，并提醒我带有$O(1)$群元素证明大小的 SNARKs 其实存在于 RSA 假设的 <sup id="fnref:LM18:1" role="doc-noteref"><a href="#fn:LM18" class="footnote" rel="footnote">10</a></sup>。</li>
+  <li><a href="https://twitter.com/swasilyev">Sergey Vasilyev</a> 指出 BLS12-381 椭圆曲线定义中的拼写错误。</li>
+  <li><a href="https://twitter.com/BlakeMScurr">@BlakeMScurr</a> 指出对 Joux 作品的错误引用<sup id="fnref:Joux00:2" role="doc-noteref"><a href="#fn:Joux00" class="footnote" rel="footnote">18</a></sup>。</li>
+  <li><a href="https://twitter.com/conradoplg">Conrado Guovea</a> 向我指出了 Victor Miller 关于他如何开发用于求 Weil 配对的算法的说明（<a href="#first-development-millers-algorithm">此处</a> 进行了讨论） 。</li>
+  <li><a href="https://twitter.com/ChrisPeikert">Chris Peikert</a> 指出有很多不依赖配对的快速 IBE 方案 <sup id="fnref:DLP14e" role="doc-noteref"><a href="#fn:DLP14e" class="footnote" rel="footnote">29</a></sup>。</li>
+</ul>
+
+<hr />
+
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:GGPR12e" role="doc-endnote">
+      <p><strong>Quadratic Span Programs and Succinct NIZKs without PCPs</strong>, by Rosario Gennaro and Craig Gentry and Bryan Parno and Mariana Raykova, <em>in Cryptology ePrint Archive, Paper 2012/215</em>, 2012, <a href="https://eprint.iacr.org/2012/215">[URL]</a> <a href="#fnref:GGPR12e" class="reversefootnote" role="doc-backlink">&#8617;</a> <a href="#fnref:GGPR12e:1" class="reversefootnote" role="doc-backlink">&#8617;<sup>2</sup></a></p>
+    </li>
+    <li id="fn:PGHR13e" role="doc-endnote">
+      <p><strong>Pinocchio: Nearly Practical Verifiable Computation</strong>, by Bryan Parno and Craig Gentry and Jon Howell and Mariana Raykova, <em>in Cryptology ePrint Archive, Paper 2013/279</em>, 2013, <a href="https://eprint.iacr.org/2013/279">[URL]</a> <a href="#fnref:PGHR13e" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:Grot16" role="doc-endnote">
+      <p><strong>On the Size of Pairing-Based Non-interactive Arguments</strong>, by Groth, Jens, <em>in Advances in Cryptology – EUROCRYPT 2016</em>, 2016 <a href="#fnref:Grot16" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:BLS01" role="doc-endnote">
+      <p><strong>Short Signatures from the Weil Pairing</strong>, by Boneh, Dan and Lynn, Ben and Shacham, Hovav, <em>in Advances in Cryptology — ASIACRYPT 2001</em>, 2001 <a href="#fnref:BLS01" class="reversefootnote" role="doc-backlink">&#8617;</a> <a href="#fnref:BLS01:1" class="reversefootnote" role="doc-backlink">&#8617;<sup>2</sup></a> <a href="#fnref:BLS01:2" class="reversefootnote" role="doc-backlink">&#8617;<sup>3</sup></a> <a href="#fnref:BLS01:3" class="reversefootnote" role="doc-backlink">&#8617;<sup>4</sup></a></p>
+    </li>
+    <li id="fn:BF01" role="doc-endnote">
+      <p><strong>Identity-Based Encryption from the Weil Pairing</strong>, by Boneh, Dan and Franklin, Matt, <em>in Advances in Cryptology — CRYPTO 2001</em>, 2001 <a href="#fnref:BF01" class="reversefootnote" role="doc-backlink">&#8617;</a> <a href="#fnref:BF01:1" class="reversefootnote" role="doc-backlink">&#8617;<sup>2</sup></a> <a href="#fnref:BF01:2" class="reversefootnote" role="doc-backlink">&#8617;<sup>3</sup></a> <a href="#fnref:BF01:3" class="reversefootnote" role="doc-backlink">&#8617;<sup>4</sup></a></p>
+    </li>
+    <li id="fn:KZG10" role="doc-endnote">
+      <p><strong>Constant-Size Commitments to Polynomials and Their Applications</strong>, by Kate, Aniket and Zaverucha, Gregory M. and Goldberg, Ian, <em>in ASIACRYPT’10</em>, 2010 <a href="#fnref:KZG10" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:GW10" role="doc-endnote">
+      <p><strong>Separating Succinct Non-Interactive Arguments From All Falsifiable Assumptions</strong>, by Craig Gentry and Daniel Wichs, <em>in Cryptology ePrint Archive, Report 2010/610</em>, 2010, <a href="https://eprint.iacr.org/2010/610">[URL]</a> <a href="#fnref:GW10" class="reversefootnote" role="doc-backlink">&#8617;</a> <a href="#fnref:GW10:1" class="reversefootnote" role="doc-backlink">&#8617;<sup>2</sup></a></p>
+    </li>
+    <li id="fn:BCCplus16" role="doc-endnote">
+      <p><strong>Efficient Zero-Knowledge Arguments for Arithmetic Circuits in the Discrete Log Setting</strong>, by Jonathan Bootle and Andrea Cerulli and Pyrros Chaidos and Jens Groth and Christophe Petit, <em>in Cryptology ePrint Archive, Report 2016/263</em>, 2016, <a href="https://eprint.iacr.org/2016/263">[URL]</a> <a href="#fnref:BCCplus16" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:Mica98" role="doc-endnote">
+      <p><strong>Computationally-Sound Proofs</strong>, by Silvio Micali, <em>in Logic Colloquium ‘95: Proceedings of the Annual European Summer Meeting of the Association of Symbolic Logic</em>, 1998, <a href="https://projecteuclid.org/ebooks/lecture-notes-in-logic/Computationally-Sound-Proofs/chapter/Computationally-Sound-Proofs/lnl/1235415908?tab=ChapterArticleLink">[URL]</a> <a href="#fnref:Mica98" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:LM18" role="doc-endnote">
+      <p><strong>Subvector Commitments with Application to Succinct Arguments</strong>, by Russell W.F. Lai and Giulio Malavolta, <em>in Cryptology ePrint Archive, Report 2018/705</em>, 2018, <a href="https://eprint.iacr.org/2018/705">[URL]</a> <a href="#fnref:LM18" class="reversefootnote" role="doc-backlink">&#8617;</a> <a href="#fnref:LM18:1" class="reversefootnote" role="doc-backlink">&#8617;<sup>2</sup></a></p>
+    </li>
+    <li id="fn:Wiki22Weil" role="doc-endnote">
+      <p><strong>André Weil — Wikipedia, The Free Encyclopedia</strong>, by Wikipedia contributors, 2022, <a href="https://en.wikipedia.org/w/index.php?title=Andr%C3%A9_Weil&amp;oldid=1124211220">[URL]</a> <a href="#fnref:Wiki22Weil" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:danboneh-shimuranote" role="doc-endnote">
+      <p>Thanks to Dan Boneh, who contrasted Weil’s definition with a different one by Shimura from his classic book on modular forms. While Shimura’s definition makes it much easier to prove all the properties of the pairing, it defines a pairing of order $n$ as a <strong>sum of $n$ points of order $n^2$</strong>. This makes it hopelessly non-computable. Weil’s definition, on the other hand, involves an evaluation of a very concrete function – there are no exponential-sized sums – but requires much more work to prove all its pairing properties. <a href="#fnref:danboneh-shimuranote" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:Weil92" role="doc-endnote">
+      <p><strong>The Apprenticeship of a Mathematician</strong>, by Weil, Andre, 1992, <a href="https://books.google.ro/books?id=73REHmJ9JNUC">[URL]</a> <a href="#fnref:Weil92" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:Mill86Short" role="doc-endnote">
+      <p><strong>Short Programs for functions on Curves</strong>, by Victor S. Miller, 1986, <a href="https://crypto.stanford.edu/miller">[URL]</a> <a href="#fnref:Mill86Short" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:miller-talk" role="doc-endnote">
+      <p>Miller tells this story himself in <a href="https://www.youtube.com/watch?v=yK5fYfn6HJg&amp;t=2901s">a talk he gave at Microsoft Research</a> on October 10th, 2010. <a href="#fnref:miller-talk" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:alin-where" role="doc-endnote">
+      <p>I am unable to find any trace of Miller’s published work on this beyond the manuscript Boneh published in<sup id="fnref:Mill86Short:1" role="doc-noteref"><a href="#fn:Mill86Short" class="footnote" rel="footnote">14</a></sup>. Any pointers would be appreciated. <a href="#fnref:alin-where" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:MVO91" role="doc-endnote">
+      <p><strong>Reducing Elliptic Curve Logarithms to Logarithms in a Finite Field</strong>, by Menezes, Alfred and Vanstone, Scott and Okamoto, Tatsuaki, <em>in ACM STOC</em>, 1991, <a href="http://doi.acm.org/10.1145/103418.103434">[URL]</a> <a href="#fnref:MVO91" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:Joux00" role="doc-endnote">
+      <p><strong>A One Round Protocol for Tripartite Diffie–Hellman</strong>, by Joux, Antoine, <em>in Algorithmic Number Theory</em>, 2000 <a href="#fnref:Joux00" class="reversefootnote" role="doc-backlink">&#8617;</a> <a href="#fnref:Joux00:1" class="reversefootnote" role="doc-backlink">&#8617;<sup>2</sup></a> <a href="#fnref:Joux00:2" class="reversefootnote" role="doc-backlink">&#8617;<sup>3</sup></a></p>
+    </li>
+    <li id="fn:BGN05" role="doc-endnote">
+      <p><strong>Evaluating 2-DNF Formulas on Ciphertexts</strong>, by Boneh, Dan and Goh, Eu-Jin and Nissim, Kobbi, <em>in Theory of Cryptography</em>, 2005 <a href="#fnref:BGN05" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:dhe" role="doc-endnote">
+      <p>Typically, there will be some key-derivation function $\mathsf{KDF}$ used to derive the key as $k = \mathsf{KDF}(e(g,g)^{abc})$. <a href="#fnref:dhe" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:TCZplus20" role="doc-endnote">
+      <p><strong>Towards Scalable Threshold Cryptosystems</strong>, by Alin Tomescu and Robert Chen and Yiming Zheng and Ittai Abraham and Benny Pinkas and Guy Golan Gueta and Srinivas Devadas, <em>in IEEE S\&amp;P’20</em>, 2020 <a href="#fnref:TCZplus20" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:Edgi22" role="doc-endnote">
+      <p><strong>BLS12-381 For The Rest Of Us</strong>, by Ben Edgington, 2022, <a href="https://hackmd.io/@benjaminion/bls12-381">[URL]</a> <a href="#fnref:Edgi22" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:BLS02e" role="doc-endnote">
+      <p><strong>Constructing Elliptic Curves with Prescribed Embedding Degrees</strong>, by Paulo S.  L.  M.  Barreto and Ben Lynn and Michael Scott, <em>in Cryptology ePrint Archive, Paper 2002/088</em>, 2002, <a href="https://eprint.iacr.org/2002/088">[URL]</a> <a href="#fnref:BLS02e" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:Cost12" role="doc-endnote">
+      <p><strong>Pairings for beginners</strong>, by Craig Costello, 2012, <a href="https://static1.squarespace.com/static/5fdbb09f31d71c1227082339/t/5ff394720493bd28278889c6/1609798774687/PairingsForBeginners.pdf">[URL]</a> <a href="#fnref:Cost12" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:GPS08" role="doc-endnote">
+      <p><strong>Pairings for cryptographers</strong>, by Steven D. Galbraith and Kenneth G. Paterson and Nigel P. Smart, <em>in Discrete Applied Mathematics</em>, 2008, <a href="http://www.sciencedirect.com/science/article/pii/S0166218X08000449">[URL]</a> <a href="#fnref:GPS08" class="reversefootnote" role="doc-backlink">&#8617;</a> <a href="#fnref:GPS08:1" class="reversefootnote" role="doc-backlink">&#8617;<sup>2</sup></a></p>
+    </li>
+    <li id="fn:Mene05" role="doc-endnote">
+      <p><strong>An Introduction to Pairing-Based Cryptography</strong>, by Alfred Menezes, 2005, <a href="https://www.math.uwaterloo.ca/~ajmeneze/publications/pairings.pdf">[URL]</a> <a href="#fnref:Mene05" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:BCMplus15e" role="doc-endnote">
+      <p><strong>Subgroup security in pairing-based cryptography</strong>, by Paulo S.  L.  M.  Barreto and Craig Costello and Rafael Misoczki and Michael Naehrig and Geovandro C.  C.  F.  Pereira and Gustavo Zanon, <em>in Cryptology ePrint Archive, Paper 2015/247</em>, 2015, <a href="https://eprint.iacr.org/2015/247">[URL]</a> <a href="#fnref:BCMplus15e" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:BN06Pair" role="doc-endnote">
+      <p><strong>Pairing-Friendly Elliptic Curves of Prime Order</strong>, by Barreto, Paulo S. L. M. and Naehrig, Michael, <em>in Selected Areas in Cryptography</em>, 2006 <a href="#fnref:BN06Pair" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:DLP14e" role="doc-endnote">
+      <p><strong>Efficient Identity-Based Encryption over NTRU Lattices</strong>, by Léo Ducas and Vadim Lyubashevsky and Thomas Prest, <em>in Cryptology ePrint Archive, Paper 2014/794</em>, 2014, <a href="https://eprint.iacr.org/2014/794">[URL]</a> <a href="#fnref:DLP14e" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+  </ol>
+</div>]]></content><author><name>Kurt Pan</name></author><category term="双线性映射" /><category term="BLS签名" /><category term="密码学" /><category term="加密" /><category term="群论" /><summary type="html"><![CDATA[原文：Pairings or bilinear maps 作者：Alin Tomescu 译者：Kurt Pan 摘要： 配对，或者双线性映射，是对密码学来说非常强大的一个数学工具。配对给我们带来了最简洁的零知识证明[^GGPR12e]$^,$[^PGHR13e]$^,$[^Grot16]，最高效的门限签名[^BLS01]，第一个可用的身份基加密（IBE）方案[^BF01] ，以及其它很多高效的密码系统[^KZG10]。本文中，我将介绍一点配对的性质，其密码学应用和令人着迷的历史。事实上，读完此文后，你可能会想要去监狱里待上个一两年。]]></summary></entry></feed>
