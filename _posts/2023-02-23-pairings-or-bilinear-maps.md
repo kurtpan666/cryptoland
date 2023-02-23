@@ -466,7 +466,7 @@ $\Gr_T$ 微基准测试是通过稍微修改`blstrs`的基准测试代码 （[�
     + 500 微秒
 
 {: .info}
-**注意：**这些基准测试随机选择取幂的基，并且**不**对其执行任何预计算，预计算会将这些时间加快 2-4 倍。
+**注意：**这些基准测试随机选择取指数操作的基，并且**不**对其执行任何预计算，预计算会将这些时间加快 2-4 倍。
 
 #### 多指数
 这是一个众所周知的优化，为了完整起见，我将其包括在内。
@@ -560,12 +560,12 @@ ristretto255/point_mul  time:   [40.163 µs 40.187 µs 40.212 µs]
 
 ---
 
-[^dhe]: Typically, there will be some key-derivation function $\mathsf{KDF}$ used to derive the key as $k = \mathsf{KDF}(e(g,g)^{abc})$.
+[^dhe]: 通常，会用一些密钥导出函数 $\mathsf{KDF}$ 用于导出密钥 $k = \mathsf{KDF}(e(g,g)^{abc})$。
 
-[^danboneh-shimuranote]: Thanks to Dan Boneh, who contrasted Weil's definition with a different one by Shimura from his classic book on modular forms. While Shimura's definition makes it much easier to prove all the properties of the pairing, it defines a pairing of order $n$ as a **sum of $n$ points of order $n^2$**. This makes it hopelessly non-computable. Weil's definition, on the other hand, involves an evaluation of a very concrete function -- there are no exponential-sized sums -- but requires much more work to prove all its pairing properties.
+[^danboneh-shimuranote]: 感谢 Dan Boneh，他将 Weil 的定义与 Shimura 在他关于模形式的经典著作中的不同定义进行了对比。 虽然 Shimura 的定义使得证明配对的所有性质变得容易得多，但它将 $n$ 阶配对定义为 $n$个$n^2$阶的点的求和。 这使得它无可救药地不可计算。 另一方面，Weil 的定义涉及对一个非常具体的函数的求值——没有指数大小的求和——但用来证明所有配对的性质需要做更多的工作。
 
-[^miller-talk]: Miller tells this story himself in [a talk he gave at Microsoft Research](https://www.youtube.com/watch?v=yK5fYfn6HJg&t=2901s) on October 10th, 2010.
+[^miller-talk]: 2010 年 10 月 10 日，Miller在 [微软研究院的演讲](https://www.youtube.com/watch?v=yK5fYfn6HJg&t=2901s) 中亲自讲述了这个故事。
 
-[^alin-where]: I am unable to find any trace of Miller's published work on this beyond the manuscript Boneh published in[^Mill86Short]. Any pointers would be appreciated.
+[^alin-where]: 除了 Boneh 在 [^Mill86Short] 中发表的手稿之外，我找不到任何 Miller 在这方面发表的作品的踪迹。 任何提示我将不胜感激。
 
 {% include refs.md %}
