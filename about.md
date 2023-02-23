@@ -35,9 +35,6 @@ key: page-about
 
 我接受**小额打赏**以更好的建设本站。你可以选择通过以下方式给我打赏（哪怕1u我也非常感谢你的支持）：
 
-- 微信文章下的打赏
-- 支付宝收款码
-- 以太坊兼容地址 kurtpan.eth
-- 闪电网络地址
-- USDT 地址
+- ERC20地址： `kurtpan.eth`或`0xb7fC44b76291ED7434bbec38FFDFDCAc4907a155`
+- USDT(TRC20)地址：`TWkxaKiat5B3wg8kMjyEwxXCyaFQiHUtLY`
 
