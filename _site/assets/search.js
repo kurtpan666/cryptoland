@@ -1,1 +1,1 @@
-window.TEXT_SEARCH_DATA={'posts':[{'title':"配对或双线性映射",'url':"/2023/02/22/pairings-or-bilinear-maps.html"}]};
+window.TEXT_SEARCH_DATA={'posts':[{'title':"配对或双线性映射",'url':"/2023/02/22/pairings-or-bilinear-maps.html"},{'title':"给人民群众的BLS12-381指南 (未完成)",'url':"/2023/02/23/bls12381-restofus.html"},{'title':"哈希到secp256k1椭圆曲线",'url':"/2023/02/23/hashtosecp256k1.html"}]};

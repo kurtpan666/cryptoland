@@ -1,4 +1,235 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-02-23T16:23:13+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">配对或双线性映射</title><link href="http://localhost:4000/2023/02/22/pairings-or-bilinear-maps.html" rel="alternate" type="text/html" title="配对或双线性映射" /><published>2023-02-22T08:00:00+08:00</published><updated>2023-02-22T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/22/pairings-or-bilinear-maps</id><content type="html" xml:base="http://localhost:4000/2023/02/22/pairings-or-bilinear-maps.html"><![CDATA[<blockquote>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-02-24T15:39:46+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">给人民群众的BLS12-381指南 (未完成)</title><link href="http://localhost:4000/2023/02/23/bls12381-restofus.html" rel="alternate" type="text/html" title="给人民群众的BLS12-381指南 (未完成)" /><published>2023-02-23T08:00:00+08:00</published><updated>2023-02-23T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/23/bls12381-restofus</id><content type="html" xml:base="http://localhost:4000/2023/02/23/bls12381-restofus.html"><![CDATA[<blockquote>
+  <ul>
+    <li>原文：<a href="https://hackmd.io/@benjaminion/bls12-381">BLS12-381 For The Rest Of Us</a></li>
+    <li>作者：Ben Edgington</li>
+    <li>译者：Kurt Pan</li>
+  </ul>
+</blockquote>
+
+<p class="info"><strong><em>开始鼓捣之前，我希望我知道的。</em></strong>
+近年来，椭圆曲线<a href="https://electriccoin.co/blog/new-snark-curve/">BLS12-381</a>已成逐渐火了起来。许多协议都将其应用到了数字签名和零知识证明中：Zcash、Ethereum 2.0、Skale、Algorand、Dfinity、Chia 等等。
+不幸的是，现有的关于 BLS12-381 的材料里充满着晦涩的咒语，比如“实例化其六角扭”和“最优扩展域塔”。我就是来解决这个问题的 :smile: <sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup>
+两个名词的正确翻译和含义
+我不会对椭圆曲线及其令人兴奋的群的性质进行一般性介绍。这方面已经有一些<a href="https://andrea.corbellini.name/2015/05/17/elliptic-curve-cryptography-a-gentle-introduction/">很棒的入门书</a>了，我将假设读者具有这些基础知识。当然，这里有很多内容并非只特定于 BLS12-381，而是也适用于其他曲线。</p>
+
+<!--more-->
+
+<h2 id="动机">动机</h2>
+<p>BLS12-381 是一个配对友好的椭圆曲线。</p>
+
+<p><a href="https://en.wikipedia.org/wiki/Pairing-based_cryptography">基于配对的密码学</a>在过去几十年得到了很大发展，使很多有用的新应用成为了可能，例如<a href="https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf">可高效聚合的</a><a href="https://www.iacr.org/archive/asiacrypt2001/22480516.pdf">短数字签名</a>、<a href="https://en.wikipedia.org/wiki/Boneh-Franklin_scheme">基于身份的密码学</a>、<a href="http://cgi.di.uoa.gr/~aggelos/crypto/page4/assets/joux-tripartite.pdf">单轮多方密钥交换</a>和高效的多项式承诺方案（如<a href="https://dankradfeist.de/ethereum/2020/06/16/kate-polynomial-commitments.html">KZG承诺</a>。</p>
+
+<p>配对友好的椭圆曲线是具有良好的嵌入度（将在<a href="">下面</a>解释！）和大素数阶子群（也见<a href="">下文</a>）的曲线。这些曲线很少见。如果你随机创建一条椭圆曲线，它是配对友好的可能性非常之小。然而，它们是可以构造出来的， BLS 曲线就被显式构造为配对友好的。还有<a href="https://eprint.iacr.org/2006/372.pdf">其他几个</a>配对友好曲线系列。</p>
+
+<details>
+<summary><b>如果你想了解有关基于配对的密码学的更多信息，请阅读下面这些不错的材料：</b> <i>（点击展开。）</i></summary>
+<p style="margin-left: .3em; border-left: .15em solid black; padding-left: .5em;">
+一个简短的（但技术性的）<a href="https://courses.csail.mit.edu/6.897/spring04/L25.pdf">解释</a>，以及<a href="https://www.math.uwaterloo.ca/~ajmeneze/publications/pairings.pdf">另一个</a>。
+<br /><br />
+<a href="https://vitalik.ca/general/2017/01/14/exploring_ecp.html">Vitalik 对椭圆曲线配对</a>进行了很好的一般性介绍。
+<br /><br />
+这份<a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4730686/">NIST 报告</a>可读性很强。我推荐第 2 节和附录。
+<br /><br />
+同样好的背景材料是配对友好曲线的<a href="https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-02.html">IETF 标准草案</a>。
+<br /><br />
+如果你想真的<em>理解</em>这些东西，那么<a href="https://www.craigcostello.com.au/s/PairingsForBeginners.pdf">Pairings for Beginners</a>就很棒。如果你仔细研究，学习里面的例子，事实证明它并没有看起来那么可怕。我真的很推荐这个（但我也一直都在学习中……）。
+</p>
+</details>
+
+<h2 id="关于曲线bls12-381">关于曲线BLS12-381</h2>
+<h3 id="历史">历史</h3>
+<h3 id="命名">命名</h3>
+<h3 id="曲线方程和参数">曲线方程和参数</h3>
+<h3 id="域扩展">域扩展</h3>
+<h3 id="两条曲线">两条曲线</h3>
+<h3 id="子群">子群</h3>
+<h3 id="扭">扭</h3>
+<h3 id="配对">配对</h3>
+<h3 id="嵌入度">嵌入度</h3>
+<h3 id="安全级别">安全级别</h3>
+<h3 id="协因子">协因子</h3>
+<h3 id="单位根">单位根</h3>
+
+<h2 id="使用曲线bls12-381">使用曲线BLS12-381</h2>
+<h3 id="bls数字签名">BLS数字签名</h3>
+<h4 id="公私钥">公私钥</h4>
+<h4 id="签名">签名</h4>
+<h4 id="验证">验证</h4>
+<h4 id="聚合">聚合</h4>
+<h4 id="恶意密钥攻击">恶意密钥攻击</h4>
+<h3 id="交换g1和g2">交换G1和G2</h3>
+<h3 id="点压缩">点压缩</h3>
+<h3 id="子群成员检验">子群成员检验</h3>
+<h3 id="生成元">生成元</h3>
+<h3 id="最终指数">最终指数</h3>
+<h3 id="哈希到曲线">哈希到曲线</h3>
+<h4 id="哈希并检验">哈希并检验</h4>
+<h4 id="simplified-swu-map">Simplified SWU map</h4>
+<h3 id="协因子清除">协因子清除</h3>
+<h3 id="扩展塔">扩展塔</h3>
+<h3 id="坐标系">坐标系</h3>
+<h4 id="仿射坐标">仿射坐标</h4>
+<h4 id="标准射影坐标">标准射影坐标</h4>
+<h4 id="jacobian-坐标">Jacobian 坐标</h4>
+
+<h2 id="进一步阅读资源">进一步阅读资源</h2>
+<p>上面链接了很多参考资料，这里就不重复了。 我只会挑出一些特别有用或有趣的东西。</p>
+
+<p>有用的参考资料：</p>
+
+<p>原始 BLS12-381 公告
+参数和序列化的简明描述
+IETF 标准草案
+上面的 tl;dr 版本，BLS for Busy People
+一般来说，配对库的实现往往是高度优化的和/或非常通用的（支持许多曲线），这使得它们很难学习。 Paul Miller 的 JavaScript/TypeScript 中的 Noble BLS12-381 库绝对是比较容易理解的。</p>
+
+<p>最后，一些有趣和有趣的读物：</p>
+
+<p>这份关于 Curve9769 的全新白皮书与 BLS12-381 没有直接关系，但它是对设计和实现椭圆曲线（在这种情况下不是配对友好的）的乐趣和痛苦的写得很好的精彩探索。
+配对并没有死，只是在休息。 一个很好的概述介绍。 一些 BLS12-381 的东西。</p>
+
+<p>就这样吧，朋友们拜拜！</p>
+
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:1" role="doc-endnote">
+      <p>我多年前学习过数学，但一直在努力回避任何与纯数学有关的事情，包括群论。 我现在很后悔。 无论如何，这不会太技术性，但我也不是专家，所以可能会出错，而且一般来说会有点手忙脚乱。 如果不是很明显的话我再澄清一下，我不是密码学家。 <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+  </ol>
+</div>]]></content><author><name>Kurt Pan</name></author><category term="双线性映射" /><category term="BLS曲线" /><category term="BLS签名" /><summary type="html"><![CDATA[原文：BLS12-381 For The Rest Of Us 作者：Ben Edgington 译者：Kurt Pan 开始鼓捣之前，我希望我知道的。 近年来，椭圆曲线BLS12-381已成逐渐火了起来。许多协议都将其应用到了数字签名和零知识证明中：Zcash、Ethereum 2.0、Skale、Algorand、Dfinity、Chia 等等。 不幸的是，现有的关于 BLS12-381 的材料里充满着晦涩的咒语，比如“实例化其六角扭”和“最优扩展域塔”。我就是来解决这个问题的 :smile: 1 两个名词的正确翻译和含义 我不会对椭圆曲线及其令人兴奋的群的性质进行一般性介绍。这方面已经有一些很棒的入门书了，我将假设读者具有这些基础知识。当然，这里有很多内容并非只特定于 BLS12-381，而是也适用于其他曲线。 我多年前学习过数学，但一直在努力回避任何与纯数学有关的事情，包括群论。 我现在很后悔。 无论如何，这不会太技术性，但我也不是专家，所以可能会出错，而且一般来说会有点手忙脚乱。 如果不是很明显的话我再澄清一下，我不是密码学家。 &#8617;]]></summary></entry><entry><title type="html">哈希到secp256k1椭圆曲线</title><link href="http://localhost:4000/2023/02/23/hashtosecp256k1.html" rel="alternate" type="text/html" title="哈希到secp256k1椭圆曲线" /><published>2023-02-23T08:00:00+08:00</published><updated>2023-02-23T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/23/hashtosecp256k1</id><content type="html" xml:base="http://localhost:4000/2023/02/23/hashtosecp256k1.html"><![CDATA[<blockquote>
+  <ul>
+    <li>原文：<a href="https://geometry.xyz/notebook/Hashing-to-the-secp256k1-Elliptic-Curve">Hashing to the secp256k1 Elliptic Curve</a></li>
+    <li>作者：<a href="https://twitter.com/weijie_eth">weijie.eth</a></li>
+    <li>译者：Kurt Pan</li>
+  </ul>
+</blockquote>
+
+<p class="info">许多密码学协议，比如<a href="https://www.iacr.org/cryptodb/data/paper.php?pubkey=30862">可聚合分布式密钥生成</a>和BLS签名方案，都需要用到<strong>哈希到曲线</strong>算法，确定性地将任意字节串转换成椭圆曲线上的一个点。这样的算法并非平凡，因为不仅仅是要产生有效的曲线点，而且还要以安全且高效的方式来产生。</p>
+
+<p>这篇文章中，我将总结哈希到曲线函数的技术现状，重点是其在<code class="language-plaintext highlighter-rouge">secp256k1</code>椭圆曲线上的应用，以及一般的哈希到曲线算法背后的一些安全考虑和性能优化。</p>
+
+<!--more-->
+
+<h2 id="背景">背景</h2>
+<p>在 <a href="https://geometry.xyz/">Geometry</a> ，我们与<a href="https://0xparc.org/">0xPARC</a> 和 <a href="https://personaelabs.org/">Personae Labs</a> 的Aayush 和 Lakshman 合作开发了一个<a href="https://eprint.iacr.org/2022/1255">产生唯一确定性nullifiers的签名方案</a>。该方案旨在与现有的以太坊钱包兼容，所以会使用到<a href="https://en.bitcoin.it/wiki/Secp256k1">secp256k1 曲线</a> 上的密钥对。为产生一个签名，签名者需要导出一个椭圆曲线点，作为对消息和公钥的哈希到曲线函数的输出。</p>
+
+<p>为最大限度地提高这个签名方案被广泛采用和标准化的机会，我们选择了一个哈希到曲线的密码套件<a href="https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-16.html#name-secp256k1_xmdsha-256_sswu_r"><code class="language-plaintext highlighter-rouge">secp256k1_XMD:SHA-256_SSWU_RO_</code></a>，它本身就是一组正在进行标准化的函数的一部分。是在提交给<a href="https://irtf.org/">互联网研究任务组（IRTF）</a> 的标准草案<a href="https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-16.html">哈希到椭圆曲线</a> 中定义的。注意在本文撰写时，该文档相对较新，尚未正式成为<a href="https://www.ietf.org/standards/">IETF标准</a>。</p>
+
+<p>在未来的文章中，我将详细介绍这个哈希到曲线函数的一个<a href="https://github.com/geometryresearch/secp256k1_hash_to_curve">circom实现</a> ，这使得它可以应用于zk-SNARK电路中。</p>
+
+<h2 id="关于哈希到椭圆曲线">关于哈希到椭圆曲线</h2>
+<p><strong>哈希到椭圆曲线</strong>（以下简称标准草案）提供了将任意字节串哈希到椭圆曲线的具体算法。它为各种椭圆曲线，如<code class="language-plaintext highlighter-rouge">secp256k1</code>、<code class="language-plaintext highlighter-rouge">P-256</code>和<code class="language-plaintext highlighter-rouge">BLS12-381</code>，定义了特定的密码套件–即一系列的常数和算法。虽然它只为这有限的一组椭圆曲线提供了密码套件，但如果读者需要，它也为如何为其他曲线构建安全的密码套件提供了一般指导。</p>
+
+<p>标准草案定义了<code class="language-plaintext highlighter-rouge">hash_to_curve</code>函数如下：</p>
+<ol>
+  <li>给定任意长输入消息<code class="language-plaintext highlighter-rouge">msg</code>，使用<code class="language-plaintext highlighter-rouge">hash_to_field</code>确定性地产生两个域元素<code class="language-plaintext highlighter-rouge">u[0]</code> 和 <code class="language-plaintext highlighter-rouge">u[1]</code></li>
+  <li>计算<code class="language-plaintext highlighter-rouge">Q0 = map_to_curve(u[0])</code></li>
+  <li>计算<code class="language-plaintext highlighter-rouge">Q1 = map_to_curve(u[1])</code></li>
+  <li>使用点加计算<code class="language-plaintext highlighter-rouge">R = Q0 + Q1</code></li>
+  <li>清除<code class="language-plaintext highlighter-rouge">R</code>的协因子并返回结果
+    <h3 id="hash_to_field"><code class="language-plaintext highlighter-rouge">hash_to_field</code></h3>
+    <p><code class="language-plaintext highlighter-rouge">hash_to_field</code> 运行 <code class="language-plaintext highlighter-rouge">expand_message_xmd</code>， 对<code class="language-plaintext highlighter-rouge">msg</code>进行哈希并输出一个96字节的数组。输出 <code class="language-plaintext highlighter-rouge">u[0]</code> 是前48字节， <code class="language-plaintext highlighter-rouge">u[1</code>] 是后48字节。对于<code class="language-plaintext highlighter-rouge">expand_message_xmd</code>我将在另外的小节中详述；现在只需简单的认为是输出了一个输入的均匀随机哈希即可。</p>
+    <h3 id="map_to_curve"><code class="language-plaintext highlighter-rouge">map_to_curve</code></h3>
+    <p><code class="language-plaintext highlighter-rouge">map_to_curve</code>使用一个常数时间方法，给定一个域元素，总是能找到一个椭圆曲线上的点。根据曲线的类型和参数的不同，该方法有不同的变体。</p>
+  </li>
+</ol>
+
+<p>该规范草案为<strong>Montgomery曲线</strong>规定了Elligator 2方法，为<strong>twisted Edwards曲线</strong>规定了twisted Edwards Elligator 2方法。对<strong>Weierstrass曲线</strong>，如<code class="language-plaintext highlighter-rouge">secp256k1</code>，有如下三种选择：</p>
+
+<ol>
+  <li><strong>Shallue-van de Woestijne (SW) 方法</strong>，适用于任意椭圆曲线，但是最慢的。</li>
+  <li><strong>Simplified Shallue-van de Woestijne-Ulas (SSWU) 方法</strong>，适用于定义为 $y^2=x^3+A x+B$ （其中 $A \neq 0,B \neq 0$）的曲线。</li>
+  <li>应用在$A B$ 等于0的曲线的<strong>Simplified SWU 方法</strong> 。这是这三种方法中最高效的。</li>
+</ol>
+
+<p>针对我们的目的，应用在$A B$ 等于0的曲线的Simplified SWU 方法是相关的，因为<code class="language-plaintext highlighter-rouge">secp256k1</code>曲线的定义中 $A=0$ 且 $B=7$，所以$A B=0$。</p>
+
+<h3 id="clear_cofactor"><code class="language-plaintext highlighter-rouge">clear_cofactor</code></h3>
+<p>这个函数将曲线上的一个点转换为素数阶子群中的一个点。要做到这一点，只需将该点与一个常数$h$（译者注：协因子cofactor）相乘。在<code class="language-plaintext highlighter-rouge">secp256k1</code>曲线的情况下，不需要做任何事情，因为这个曲线中$h$等于1。</p>
+
+<h2 id="安全考虑">安全考虑</h2>
+<p>任何哈希到曲线函数或其实现都应该具有特定的安全性质，以保持采用它的密码学协议的安全。否则，一个弱的哈希到曲线函数会使协议受到攻击。正如该标准草案所指出的，哈希到曲线函数不仅必须是抗碰撞的，而且不应暴露输出点的离散对数。</p>
+
+<p>为了分析一个密码学协议的安全性，密码学家基于其组成部分的假设来写证明。这些理论上的假设可以被描述为模型。该标准草案的作者认为，他们的方法在所谓的<a href="https://link.springer.com/referenceworkentry/10.1007/978-1-4419-5906-5_220">随机预言模型</a> （ROM）中是安全的。因此，如果设计正确，依靠这种哈希到曲线函数的协议也可以在ROM中证明是安全的。</p>
+
+<h3 id="随机预言模型">随机预言模型</h3>
+
+<p>该标准草案的作者认为，他们的哈希到曲线算法在ROM中是安全的。这些函数通过两种方式实现这一点：确保算法通过哈希函数将输入信息转换为均匀随机的域元素，并确保哈希到曲线算法的输出曲线点在统计上是均匀的。</p>
+
+<p>首先，<code class="language-plaintext highlighter-rouge">hash_to_field</code>过程依赖于一种将字节串扩展为均匀随机的字节串的方法。这个方法有两个变种：<code class="language-plaintext highlighter-rouge">expand_message_xof</code>和<code class="language-plaintext highlighter-rouge">expand_message_xmd</code>。</p>
+
+<p><code class="language-plaintext highlighter-rouge">expand_message_xof</code>依赖于一个哈希函数，它原生提供了一个所需长度的输出。由于这个哈希函数（推荐用SHAKE XOF类）在ROM下是可证明安全的，因此很容易证明<code class="language-plaintext highlighter-rouge">hash_to_field</code>函数在ROM下也是安全的。</p>
+
+<p><code class="language-plaintext highlighter-rouge">expand_message_xmd</code>则依赖于一个具有固定长度输出的哈希函数。虽然有些哈希函数与随机预言不可区分，或者说基于海绵的哈希函数，其内部函数可以证明是随机置换或随机变换，因此可以认为<code class="language-plaintext highlighter-rouge">expand_message_xmd</code>与随机预言不可区分，但有些哈希函数就不是这种情况，比如Merkle-Damgård哈希函数。</p>
+
+<p>该标准草案引用了Coron等人在<a href="https://cs.nyu.edu/~dodis/ps/merkle.pdf">CDMP05</a> 中的观点，认为像SHA这样的哈希函数所采用的增强Merkle-Damgård变换不满足以下安全性质：</p>
+
+<p class="info">当固定长度的构造组件被看作是一个随机预言或一个理想分组加密（ideal block-cipher）时，任意长度的哈希函数$H$一定会表现得像一个随机预言。</p>
+
+<p>为了让<code class="language-plaintext highlighter-rouge">expand_message_xmd</code>在 ROM 中证明安全且使用像 <code class="language-plaintext highlighter-rouge">SHA256</code> 这样的 Merkle-Damgård 哈希函数，作者在 CDMP05 中（第12页）使用了一个名为 <strong>HMAC</strong> $^f$ 的构造。 这种构造的粗略描述（为简单起见跳过了后缀填充步骤）如下：</p>
+<ol>
+  <li>令$k$ 为Merkle-Damgård哈希函数$\mathrm{MD}^f$ 所要求的输入字节个数，$m$为消息。</li>
+  <li>令$m_0$ 为$k$个0的字节数组。</li>
+  <li>令 $y^{\prime}=\mathrm{MD}^f\left(\left[m_0 | m\right]\right)$ 其中 $|$ 指代级联。</li>
+  <li>返回 $\mathrm{MD}^f\left(\left[y^{\prime}\right]\right)$</li>
+</ol>
+
+<p class="info">回顾<strong>长度扩展攻击</strong>：当给定一个哈希值$h\left(m_a\right)$时，<em>即使不知道$m_a$的值</em>，敌手也能够通过平凡地实例化$h\left(m_a\right)$底层哈希的内部状态以导出$h\left(\left[m_a | m_b\right]\right)$。这违背了随机预言模型的一个关键性质——即一个消息  $\left(m_b\right)$  的哈希值不应该可以从另一个消息 $\left(m_a\right)$ 的哈希值中确定。</p>
+
+<p>HMAC$^f$ 构造不受此问题的影响。 仅知道 $y^{\prime}$ 希望导出 $\operatorname{HMAC}^f([m | x])$ 的敌手不太可能成功。 考虑敌手可能的尝试：</p>
+
+<ol>
+  <li>得到 $a=\operatorname{HMAC}^f([m])$.
+    <ul>
+      <li>注意 $a$ 等价于 $\mathrm{MD}^f\left(\mathrm{MD}^f\left(\left[m_0 | m\right]\right)\right)$.</li>
+    </ul>
+  </li>
+  <li>仅指导 $\mathrm{MD}^f$ 和 $y$，敌手想要导出 $b=\operatorname{HMAC}^f([m | x])$.
+    <ul>
+      <li>注意 $b$ 等价于 $\operatorname{MD}^f\left(\operatorname{MD}^f\left(\left[m_0|m| x\right]\right)\right)$.</li>
+    </ul>
+  </li>
+  <li>敌手需要$\operatorname{MD}^f\left(\left[m_0 | m\right]\right)$ 等于$m_0$以使其可以用$m_0$实例化$\mathrm{MD}^f$ 的内部状态，然后在$x$上处理$\mathrm{MD}^f$ 的其余部分以得到$\operatorname{MD}^f\left(\left[m_0|m| x\right]\right)$。</li>
+  <li>然而， $\operatorname{MD}^f\left(\left[m_0 | m\right]\right)$ 等于$m_0$是极不可能的。</li>
+</ol>
+
+<p>因此，$\operatorname{HMAC}^f([m])$ 不会受到长度扩展攻击，因此更容易在 ROM 下被证明是安全的。</p>
+
+<p><code class="language-plaintext highlighter-rouge">expand_message_xmd</code> 实现了这种构造，通常称为<a href="https://en.wikipedia.org/wiki/HMAC"><strong>基于哈希的消息认证码 (HMAC)</strong></a>。 作为参考，请注意其实现遵循以下模式。 对使用 <code class="language-plaintext highlighter-rouge">SHA256</code> 并需要 96 字节输出的哈希到曲线密码套件，<code class="language-plaintext highlighter-rouge">expand_message_xmd</code> 大致定义如下：</p>
+
+<ol>
+  <li>令 <code class="language-plaintext highlighter-rouge">Z_pad</code> 为 64 个零的字节数组（因为对于 SHA256，$k=64$）。 这类似于上述的 $m_0$。</li>
+  <li><code class="language-plaintext highlighter-rouge">msg_prime</code> 构造为 <code class="language-plaintext highlighter-rouge">Z_pad</code>、消息和一些常量例如 <code class="language-plaintext highlighter-rouge">DST_prime</code>的级联。</li>
+  <li>计算 <code class="language-plaintext highlighter-rouge">b_0 = SHA256 (msg_prime)</code>。 这类似于如上所述的 $y^{\prime}$。</li>
+  <li>计算 <code class="language-plaintext highlighter-rouge">b_1 = SHA256 (b_0 || 1|| DST_prime )</code>。</li>
+  <li>计算 <code class="language-plaintext highlighter-rouge">b_2 = SHA256 (strxor(b_0, b_1) || 2 || DST_prime)</code>。</li>
+  <li>计算 <code class="language-plaintext highlighter-rouge">b_3 = SHA256 (strxor(b_0, b_2) || 3 || DST_prime)</code>。</li>
+  <li>返回 <code class="language-plaintext highlighter-rouge">b_1 || b_2 || b_3</code>。</li>
+</ol>
+
+<p>如上所述，在步骤 2 中添加 <code class="language-plaintext highlighter-rouge">Z_pad</code> 可以防止长度扩展攻击，该攻击可使敌手更容易影响 <code class="language-plaintext highlighter-rouge">b_1</code>、<code class="language-plaintext highlighter-rouge">b_2</code> 和 <code class="language-plaintext highlighter-rouge">b_3</code> 的值。</p>
+
+<h3 id="域分隔">域分隔</h3>
+<p>读者可能会注意到上面 <code class="language-plaintext highlighter-rouge">expand_message_xmd</code> 算法中的 <code class="language-plaintext highlighter-rouge">DST_prime </code>常量，它编码了表示<strong>域分隔标记 (DST)</strong> 的字节串，后跟 DST 长度作为单个字节。 每个密码套件都有一个唯一的 DST，例如 <code class="language-plaintext highlighter-rouge">secp256k1_XMD:SHA-256_SSWU_RO_</code> 套件的 <code class="language-plaintext highlighter-rouge">QUUX-V01-CS02-with-secp256k1_XMD:SHA-256_SSWU_RO_</code>。
+在 <code class="language-plaintext highlighter-rouge">expand_message_xmd</code> 中包含唯一<code class="language-plaintext highlighter-rouge"> DST_prime</code> 的原因是为了确保其输出特定于唯一一个密码套件。 实际上，每个密码套件都可以理解为与独立的随机预言一起运行，这是在随机预言模型下被证明是安全的协议的<a href="https://www.ietf.org/archive/id/draft-irtf-cfrg-hash-to-curve-16.html#section-2.2.5">重要安全假设</a>。</p>
+
+<h3 id="输出均匀性">输出均匀性</h3>
+
+<p>在标准草案中，每条椭圆曲线都带有两个密码套件：一个执行<strong>哈希到曲线</strong>，另一个执行<strong>编码到曲线</strong>。两者的区别在于前者函数的输出在统计上比后者更均匀，但后者的效率更高。作者指出，安全的默认设置是使用哈希到曲线，除非有人确定在自己的密码协议中可以接受不均匀性。</p>
+
+<p>哈希到曲线不同的原因在于它的实现。 哈希到曲线函数从输入消息中导出两个不同的椭圆曲线点（使用 <code class="language-plaintext highlighter-rouge">map_to_curve</code> 函数）并将它们相加。相比之下，编码到曲线函数只调用一次 <code class="language-plaintext highlighter-rouge">map_to_curve</code>。由于 <code class="language-plaintext highlighter-rouge">map_to_curve </code>的输出是非均匀的，因此编码到曲线的输出是非均匀的。但由于哈希到曲线对两个非均匀点进行了点加，因此输出是均匀的。作者引用了 <a href="https://eprint.iacr.org/2009/340.pdf">Brier 等人</a> 的文章，证明情况确实如此。</p>
+
+<h3 id="常数时间实现">常数时间实现</h3>
+
+<p>标准草案中哈希到曲线密码套件的一个重要安全性质就是可以<em>在常数时间内</em>计算。如果要哈希的消息需要保密的，则此性质至关重要。</p>
+
+<p>拥有安全的常数时间哈希到曲线函数是重要的进展，因为之前关于哈希到曲线算法的许多工作都使用了<strong>尝试-增量方法</strong>，输入消息被转换为域元素，测试它是否是曲线中有效的 $x$ 坐标，如果不是，则递增并重复测试。</p>
+
+<p>这种尝试-增量方法的缺点有两方面。首先，即使在 $n-x$ 次尝试中已经找到了有效点，也必须执行到特定次数 $n$。这是为了防止<strong>侧信道时序攻击</strong>。其次，总是存在 $n$ 不够大的可能性，因此必须使用新消息再次尝试。处理这些情况所需的额外复杂性可能会导致协议中出现安全漏洞的可能性更大，如在 WPA3 和 EAP-pwd 协议的实现中发现的 <a href="https://eprint.iacr.org/2019/383">Dragonblood 漏洞</a> 中所见。</p>
+
+<h2 id="结论">结论</h2>
+
+<p>在这篇文章中，我概述了<strong>哈希到椭圆曲线</strong>的作者提出的各种安全和性能考虑。 我相信一组设计良好且安全的哈希到曲线密码套件将极大地有益于密码学领域，因为这些函数是许多重要协议的核心。 为此，有必要对本标准草案进行更具建设性的审查。</p>]]></content><author><name>Kurt Pan</name></author><category term="secp256k1曲线" /><category term="哈希到曲线" /><summary type="html"><![CDATA[原文：Hashing to the secp256k1 Elliptic Curve 作者：weijie.eth 译者：Kurt Pan 许多密码学协议，比如可聚合分布式密钥生成和BLS签名方案，都需要用到哈希到曲线算法，确定性地将任意字节串转换成椭圆曲线上的一个点。这样的算法并非平凡，因为不仅仅是要产生有效的曲线点，而且还要以安全且高效的方式来产生。 这篇文章中，我将总结哈希到曲线函数的技术现状，重点是其在secp256k1椭圆曲线上的应用，以及一般的哈希到曲线算法背后的一些安全考虑和性能优化。]]></summary></entry><entry><title type="html">配对或双线性映射</title><link href="http://localhost:4000/2023/02/22/pairings-or-bilinear-maps.html" rel="alternate" type="text/html" title="配对或双线性映射" /><published>2023-02-22T08:00:00+08:00</published><updated>2023-02-22T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/22/pairings-or-bilinear-maps</id><content type="html" xml:base="http://localhost:4000/2023/02/22/pairings-or-bilinear-maps.html"><![CDATA[<blockquote>
   <ul>
     <li>原文：<a href="https://alinush.github.io/2022/12/31/pairings-or-bilinear-maps.html">Pairings or bilinear maps</a></li>
     <li>作者：Alin Tomescu</li>
@@ -84,12 +315,12 @@ e(u^a, v^b)
 在那里，Weil，“设法说服了思想开明的监狱长将 [他] 关在一个单独的牢房里，[他] 被允许保留 [..] 笔、墨水和纸。”</p>
 
 <p>Weil 使用这些他新获得的工具定义出了跨两个椭圆曲线群的配对。
-<strong>然而</strong>，当时<strong>非常奇怪</strong>的是，Weil 付出了很多努力来确保他对配对的定义是<em>可计算的</em>。
+<strong>然而</strong>，当时看来可能<strong>非常奇怪</strong>的是，Weil 付出了很多努力来确保他对配对的定义是<em>可计算的</em>。
 这种额外的努力使今天基于配对的密码学成为了可能<sup id="fnref:danboneh-shimuranote" role="doc-noteref"><a href="#fn:danboneh-shimuranote" class="footnote" rel="footnote">12</a></sup>。</p>
 
 <h3 id="去监狱不去大学">去监狱，不去大学？</h3>
-<p>有趣的是，韦尔在监狱里的时间是如此富有高效率，以至于他开始考虑是否应该每年在那里度过几个月。
-更好的是，Weil 考虑他是否应该<strong>向有关当局建议每个数学家都要在监狱里度过一段时间。</strong>
+<p>有趣的是，韦尔在监狱里的时间是如此高效，以至于他开始考虑是否应该每年在那里度过几个月。
+更绝的是，Weil 考虑他是否应该<strong>向有关当局建议每个数学家都要在监狱里度过一段时间。</strong>
 Weil 写道：</p>
 
 <blockquote>
@@ -482,7 +713,7 @@ e(u, v) = f_{p, u}(v)^{(q^k - 1)/p}
   </li>
 </ul>
 
-<p class="info"><strong>注意：</strong>这些基准测试随机选择取幂的基，并且<strong>不</strong>对其执行任何预计算，预计算会将这些时间加快 2-4 倍。</p>
+<p class="info"><strong>注意：</strong>这些基准测试随机选择取指数操作的基，并且<strong>不</strong>对其执行任何预计算，预计算会将这些时间加快 2-4 倍。</p>
 
 <h4 id="多指数">多指数</h4>
 <p>这是一个众所周知的优化，为了完整起见，我将其包括在内。</p>
@@ -635,7 +866,7 @@ ristretto255/point_mul  time:   [40.163 µs 40.187 µs 40.212 µs]
       <p><strong>André Weil — Wikipedia, The Free Encyclopedia</strong>, by Wikipedia contributors, 2022, <a href="https://en.wikipedia.org/w/index.php?title=Andr%C3%A9_Weil&amp;oldid=1124211220">[URL]</a> <a href="#fnref:Wiki22Weil" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
     <li id="fn:danboneh-shimuranote" role="doc-endnote">
-      <p>Thanks to Dan Boneh, who contrasted Weil’s definition with a different one by Shimura from his classic book on modular forms. While Shimura’s definition makes it much easier to prove all the properties of the pairing, it defines a pairing of order $n$ as a <strong>sum of $n$ points of order $n^2$</strong>. This makes it hopelessly non-computable. Weil’s definition, on the other hand, involves an evaluation of a very concrete function – there are no exponential-sized sums – but requires much more work to prove all its pairing properties. <a href="#fnref:danboneh-shimuranote" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+      <p>感谢 Dan Boneh，他将 Weil 的定义与 Shimura 在他关于模形式的经典著作中的不同定义进行了对比。 虽然 Shimura 的定义使得证明配对的所有性质变得容易得多，但它将 $n$ 阶配对定义为 $n$个$n^2$阶的点的求和。 这使得它无可救药地不可计算。 另一方面，Weil 的定义涉及对一个非常具体的函数的求值——没有指数大小的求和——但用来证明所有配对的性质需要做更多的工作。 <a href="#fnref:danboneh-shimuranote" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
     <li id="fn:Weil92" role="doc-endnote">
       <p><strong>The Apprenticeship of a Mathematician</strong>, by Weil, Andre, 1992, <a href="https://books.google.ro/books?id=73REHmJ9JNUC">[URL]</a> <a href="#fnref:Weil92" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
@@ -644,10 +875,10 @@ ristretto255/point_mul  time:   [40.163 µs 40.187 µs 40.212 µs]
       <p><strong>Short Programs for functions on Curves</strong>, by Victor S. Miller, 1986, <a href="https://crypto.stanford.edu/miller">[URL]</a> <a href="#fnref:Mill86Short" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
     <li id="fn:miller-talk" role="doc-endnote">
-      <p>Miller tells this story himself in <a href="https://www.youtube.com/watch?v=yK5fYfn6HJg&amp;t=2901s">a talk he gave at Microsoft Research</a> on October 10th, 2010. <a href="#fnref:miller-talk" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+      <p>2010 年 10 月 10 日，Miller在 <a href="https://www.youtube.com/watch?v=yK5fYfn6HJg&amp;t=2901s">微软研究院的演讲</a> 中亲自讲述了这个故事。 <a href="#fnref:miller-talk" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
     <li id="fn:alin-where" role="doc-endnote">
-      <p>I am unable to find any trace of Miller’s published work on this beyond the manuscript Boneh published in<sup id="fnref:Mill86Short:1" role="doc-noteref"><a href="#fn:Mill86Short" class="footnote" rel="footnote">14</a></sup>. Any pointers would be appreciated. <a href="#fnref:alin-where" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+      <p>除了 Boneh 在 <sup id="fnref:Mill86Short:1" role="doc-noteref"><a href="#fn:Mill86Short" class="footnote" rel="footnote">14</a></sup> 中发表的手稿之外，我找不到任何 Miller 在这方面发表的作品的踪迹。 任何提示我将不胜感激。 <a href="#fnref:alin-where" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
     <li id="fn:MVO91" role="doc-endnote">
       <p><strong>Reducing Elliptic Curve Logarithms to Logarithms in a Finite Field</strong>, by Menezes, Alfred and Vanstone, Scott and Okamoto, Tatsuaki, <em>in ACM STOC</em>, 1991, <a href="http://doi.acm.org/10.1145/103418.103434">[URL]</a> <a href="#fnref:MVO91" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
@@ -659,7 +890,7 @@ ristretto255/point_mul  time:   [40.163 µs 40.187 µs 40.212 µs]
       <p><strong>Evaluating 2-DNF Formulas on Ciphertexts</strong>, by Boneh, Dan and Goh, Eu-Jin and Nissim, Kobbi, <em>in Theory of Cryptography</em>, 2005 <a href="#fnref:BGN05" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
     <li id="fn:dhe" role="doc-endnote">
-      <p>Typically, there will be some key-derivation function $\mathsf{KDF}$ used to derive the key as $k = \mathsf{KDF}(e(g,g)^{abc})$. <a href="#fnref:dhe" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+      <p>通常，会用一些密钥导出函数 $\mathsf{KDF}$ 用于导出密钥 $k = \mathsf{KDF}(e(g,g)^{abc})$。 <a href="#fnref:dhe" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
     <li id="fn:TCZplus20" role="doc-endnote">
       <p><strong>Towards Scalable Threshold Cryptosystems</strong>, by Alin Tomescu and Robert Chen and Yiming Zheng and Ittai Abraham and Benny Pinkas and Guy Golan Gueta and Srinivas Devadas, <em>in IEEE S\&amp;P’20</em>, 2020 <a href="#fnref:TCZplus20" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
@@ -689,4 +920,4 @@ ristretto255/point_mul  time:   [40.163 µs 40.187 µs 40.212 µs]
       <p><strong>Efficient Identity-Based Encryption over NTRU Lattices</strong>, by Léo Ducas and Vadim Lyubashevsky and Thomas Prest, <em>in Cryptology ePrint Archive, Paper 2014/794</em>, 2014, <a href="https://eprint.iacr.org/2014/794">[URL]</a> <a href="#fnref:DLP14e" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
     </li>
   </ol>
-</div>]]></content><author><name>Kurt Pan</name></author><category term="双线性映射" /><category term="BLS签名" /><category term="密码学" /><category term="加密" /><category term="群论" /><summary type="html"><![CDATA[原文：Pairings or bilinear maps 作者：Alin Tomescu 译者：Kurt Pan 摘要： 配对，或者双线性映射，是对密码学来说非常强大的一个数学工具。配对给我们带来了最简洁的零知识证明[^GGPR12e]$^,$[^PGHR13e]$^,$[^Grot16]，最高效的门限签名[^BLS01]，第一个可用的身份基加密（IBE）方案[^BF01] ，以及其它很多高效的密码系统[^KZG10]。本文中，我将介绍一点配对的性质，其密码学应用和令人着迷的历史。事实上，读完此文后，你可能会想要去监狱里待上个一两年。]]></summary></entry></feed>
+</div>]]></content><author><name>Kurt Pan</name></author><category term="双线性映射" /><category term="BLS曲线" /><category term="BLS签名" /><category term="身份基加密" /><summary type="html"><![CDATA[原文：Pairings or bilinear maps 作者：Alin Tomescu 译者：Kurt Pan 摘要： 配对，或者双线性映射，是对密码学来说非常强大的一个数学工具。配对给我们带来了最简洁的零知识证明[^GGPR12e]$^,$[^PGHR13e]$^,$[^Grot16]，最高效的门限签名[^BLS01]，第一个可用的身份基加密（IBE）方案[^BF01] ，以及其它很多高效的密码系统[^KZG10]。本文中，我将介绍一点配对的性质，其密码学应用和令人着迷的历史。事实上，读完此文后，你可能会想要去监狱里待上个一两年。]]></summary></entry></feed>
