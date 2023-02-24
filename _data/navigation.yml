@@ -50,6 +50,9 @@ header:
       tr      : &TR       Hakkında
       # @end locale config
     url: /about.html
+    
+  - title: DHOS
+    url: /archive.html?tag=DHOS
 
 
 # NOTE: For some reason, only depth-1 nesting works here.
