@@ -54,6 +54,9 @@ header:
   - title: DHOS
     url: /archive.html?tag=DHOS
 
+  - title: 原语里弄
+    url: https://www.primitiveslane.org/
+
 
 # NOTE: For some reason, only depth-1 nesting works here.
 # I tried using subfolderitems and subsubfolderitems with 'page' rather than 'title' but no luck
