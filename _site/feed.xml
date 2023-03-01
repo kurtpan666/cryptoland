@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-02-25T11:45:51+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">给人民群众的BLS12-381指南 (未完成)</title><link href="http://localhost:4000/2023/02/23/bls12381-restofus.html" rel="alternate" type="text/html" title="给人民群众的BLS12-381指南 (未完成)" /><published>2023-02-23T08:00:00+08:00</published><updated>2023-02-23T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/23/bls12381-restofus</id><content type="html" xml:base="http://localhost:4000/2023/02/23/bls12381-restofus.html"><![CDATA[<blockquote>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-03-01T18:19:50+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">给人民群众的BLS12-381指南 (未完成)</title><link href="http://localhost:4000/2023/02/23/bls12381-restofus.html" rel="alternate" type="text/html" title="给人民群众的BLS12-381指南 (未完成)" /><published>2023-02-23T08:00:00+08:00</published><updated>2023-02-23T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/23/bls12381-restofus</id><content type="html" xml:base="http://localhost:4000/2023/02/23/bls12381-restofus.html"><![CDATA[<blockquote>
   <ul>
     <li>原文：<a href="https://hackmd.io/@benjaminion/bls12-381">BLS12-381 For The Rest Of Us</a></li>
     <li>作者：Ben Edgington</li>
@@ -38,7 +38,19 @@
 
 <h2 id="关于曲线bls12-381">关于曲线BLS12-381</h2>
 <h3 id="历史">历史</h3>
+<p>曲线 BLS12-381是由<a href="https://twitter.com/ebfull">Sean Bowe</a>在 2017 年初<a href="https://electriccoin.co/blog/new-snark-curve/">设计</a>的，作为一次 Zcash 协议升级的基础内容。它既对配对友好（使其对数字签名高效）又对构建 zkSnarks 有效。</p>
+
+<p>“下一代”、可扩展区块链协议的激增使得生成可以高效聚合以及轻松设置门限的短数字签名变得非常重要。BLS12-381 的特性使其经常成为这些协议的首选曲线。</p>
+
+<p>一些密码学库——Apache 的<a href="https://milagro.apache.org/">Milagro</a>等成熟库，以及<a href="https://github.com/herumi/mcl">Herumi</a>和<a href="https://github.com/supranational/blst">Blst</a>等新兴库——都支持 BLS12-381。并且已经有将 BLS12-381 纳入 IETF 标准的举措，例如<a href="https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-02.html#rfc.section.4.2.2">Pairing-Friendly Curves</a>、<a href="https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9">Hashing to Elliptic Curves</a>和<a href="https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00#section-4.2">BLS signatures</a>。这对于协议互操作性来说是个好消息！</p>
+
 <h3 id="命名">命名</h3>
+<p>BLS12-381 是<a href="https://eprint.iacr.org/2002/088.pdf">Barreto、Lynn 和 Scott</a>描述的曲线族的一部分（它们是此处显示的 B、L 和 S -<a href="">稍后</a>将出现不同的 BLS 三人组）。</p>
+
+<p>12 是曲线的嵌入度：既不太低也不太高。<a href="">稍后</a>我们将讨论嵌入度。</p>
+
+<p>381是表示曲线上坐标所需的比特数：域模数，$q$。 一个点的坐标来自一个具有素数阶的有限域，而那个素数，$q$, 是 381 比特。381 是一个相当方便的数字，因为我们可以为每个域元素使用 48 个字节，剩下 3 比特用于有用的标志或算术优化。这个数字的大小取决于<a href="">安全要求</a>和实现效率。</p>
+
 <h3 id="曲线方程和参数">曲线方程和参数</h3>
 <h3 id="域扩展">域扩展</h3>
 <h3 id="两条曲线">两条曲线</h3>
@@ -52,6 +64,12 @@
 
 <h2 id="使用曲线bls12-381">使用曲线BLS12-381</h2>
 <h3 id="bls数字签名">BLS数字签名</h3>
+<p>现在是介绍另一个 BLS 的时候了：Boneh、Lynn 和 Shacham。（L 与 BLS12-381 中的 L 是一个人；B 和 S 不是。）</p>
+
+<p>BLS 签名<a href="https://www.iacr.org/archive/asiacrypt2001/22480516.pdf">于 2001 年</a>提出，比 2002 年<a href="https://eprint.iacr.org/2002/088.pdf">BLS 曲线系列</a>发布稍早一些。令人高兴的是，它们是携手共进的关系。（BLS 签名可以使用其他曲线；BLS 曲线也有签名以外的用途。但是当它们结合在一起时就挺不错。）</p>
+
+<p><a href="https://tools.ietf.org/html/draft-boneh-bls-signature-00">IETF 标准草案</a>中对 BLS 签名方案有相当简洁明了的描述。另请参阅该<a href="https://github.com/kwantam/draft-irtf-cfrg-bls-signature">GitHub 库</a>。</p>
+
 <h4 id="公私钥">公私钥</h4>
 <h4 id="签名">签名</h4>
 <h4 id="验证">验证</h4>
@@ -1221,4 +1239,292 @@ ZKP 是通过对电路生成多项式创建的。 zkEVM 想要用 EVM 制作电�
 
 <p>最后看 Nova 的折叠方案，这里直到最后才证明：正如我们所见，折叠方案将两个实例组合为一个。 在每一步，我们将实例折叠成一个正在运行的实例。这需要 O(1) 点加法，但常数更小！虽然 Nova 是为 R1CS 电路设计的，但 Sangria 为 PLONK 算法释放了相同的潜力。与 Nova 推出“relaxed R1CS”的方式相同，Sangria 中的主要成分是“relaxed PLONK”</p>
 
-<p><img src="https://imgs.zhubai.love/4786481e320f4b4180a267ff258de7bf_2158450480702357504.png" alt="image" /></p>]]></content><author><name>Kurt Pan</name></author><category term="DHOS" /><summary type="html"><![CDATA[StarkWareSessions2023 https://www.youtube.com/playlist?list=PLcIyXLwiPilUs4PiBinyL2ker2oEFT-mc @nico_mnbl: 最近更新了这个！ https://nmohnblatt.github.io/zk-jargon-decoder/foreword.html 新外观：移动到了 mdbook 新条目：Oracle、PLONKish ，并完成了许多空条目，例如 Nullifier、Polynomial Commitment Scheme、Threshold Encryption 改进了一些现有条目，如 R1CS 密码学工具 作者将常用的一些密码学工具的 Web 版，比如生成密钥、哈希、解密加密等等，做在了一起方便使用。 https://crypto-online.cn/ @Steven Galbraith： https://www.nist.gov/news-events/news/2023/02/nist-revises-digital-signature-standard-dss-and-publishes-guideline 用于数字签名的 NIST 联邦信息处理标准 (FIPS) 的新版本已经发布， 另见此处。此版本包括进了 EdDSA。 EdDSA（至少）有两个显着特征。 首先，它与 Schnorr 签名的关系比 ECDSA 更密切。 这意味着它（在我看来）避免了ECDSA 的许多笨拙方面，并允许进行更优雅的安全分析。 其次，它使用Edwards形式的曲线。 具体来说，文件 Recommendations for Discrete Logarithm-based Cryptography: Elliptic Curve Domain Parameters 指出“本建议包括两条新指定的 Edwards 曲线，与传统曲线相比，它们提供更高的性能、抵抗侧信道攻击和更简单的实现”。 这些曲线包括广泛使用的 Edwards25519 曲线。我还借此机会宣传此页面，其中列出了使用 Ed25519 的应用程序。 NIST 选择“轻量级密码学”算法来保护小型设备。这些算法旨在保护由物联网和其他小型电子产品创建和传输的数据。 https://www.nist.gov/news-events/news/2023/02/nist-selects-lightweight-cryptography-algorithms-protect-small-devices 零知识证明 (ZKP) 是区块链的未来吗？在对消费者数据隐私的新兴趣和零知识以太坊虚拟机 (zkEVM) 的发展的推动下，整个 ZKP 生态系统的创新呈爆炸式增长。 https://www.bvp.com/atlas/are-zero-knowledge-proofs-zkps-the-future-of-blockchain @Ingo_zk：这是我们演讲“ECNTT 简介”的幻灯片 https://www.ingonyama.com/blogs/intro-to-ecntt-from-starkware-sessions-2023 @federicocarrone：我刚刚结束了与我们团队的 20 名工程师、数学家、物理学家、密码学家和计算机科学家的会议，他们刚刚开始在 lambdaworks 和我们的 rust证明者中的starknet 的工作。 看看这个库并了解我们如何构建的： https://github.com/lambdaclass/lambdaworks @sproule_：zk力量尽在您掌中！ zk 的独特属性比以往任何时候都更能通过突破性的新工具提供给所有级别的开发人员。我通过这些选项整理了一份指南，有助于剖析关键的权衡： https://blockchain.capital/a-developers-guide-to-the-zkgalaxy/ @verumlotus：周末hack ： 建立了一个网站，允许你用 ZK友好哈希（MiMC 和 Poseidon）计算任何输入的哈希值，在各种椭圆曲线上，包括 BN-128 和来自@ElectricCoinCo的pasta曲线 https://zk-hashes.vercel.app/ 上个月在搞一个使用Nova（需要Vesta曲线）的ZK 项目时有了这个想法。 生成 MiMC/Poseidon 哈希的唯一方法是编写 Circom 电路并记录输出。它适用于高达 50 维的数字、向量和矩阵。 MiMC 是从@0xPARC的@darkforest_eth 实现中改来的，而 Poseidon 是由@identhree的实现中改来的。 这里是源代码： https://github.com/verumlotus/ZK-Hashes SAFE (Sponge API for Field Elements) – ZK Hash 应用的工具箱 https://hackmd.io/bHgsH6mMStCVibM_wYvb2w @Braavos：Braavos 钱包账户合约以及快速ECDSA实现现已开源！ https://github.com/myBraavos/braavos-account-cairo https://github.com/myBraavos/efficient-secp256r1 @Braavos：宣布账户抽象安全金字塔！ https://twitter.com/myBraavos/status/1622548536444305411 @crypto_carsten：我们花了一些时间列出了 MPC（和其他一些隐私增强技术）在经典金融和 Defi 中的使用情况。 https://eprint.iacr.org/2023/122 @Ariel Gabizon：Does someone know by what factor roughly is multiplication in goldilocks faster than e.g. the bn254 field? https://twitter.com/rel_zeta_tech/status/1622984483359129601 @λFederico Carrone：starknet_in_rust 是 StarkNet 在 Rust 中的一个实现。 使用 cairo-rs，即 Cairo 虚拟机的 Rust 实现。 https://github.com/lambdaclass/starknet_in_rust @smpalladino：在研究了如何构建零知识证明一段时间后，我整理了一篇文章，阐述了我从开发人员的角度所学到的知识。包括以下代码示例：Circom/Halo2/Noir https://dev.to/spalladino/a-beginners-intro-to-coding-zero-knowledge-proofs-c56 @λFederico Carrone：正在研究 STARKs 递归、SNARKs 和 IVC 相关内容。 我们仍然不了解有关 STARK 中递归的一些事情，但我们已经看到它们比我们原先想象的更强大。 我们将在接下来的几周内在帖子中进行解释。 @sofía celi：Gregor Seiler 非常有趣的博士论文：“实用的基于格的零知识证明系统” https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/560505/1/thesis.pdf @makoto_inoue：ENS at StarkWare Sessions https://ens.mirror.xyz/Lznxnu4tBovdWcsv7QHFCieXaTddpdKKDrN4nfZSzxk @Prof B Buchanan OBE：OpenSSL 已经变得臃肿，漏洞不断，但 NaCl 已经将编程剥离到一些最受信任的方法，例如 Curve 25519（X25519 和 Ed25519）、AES GCM、Blake2b 和 XChaCha20。 更少的代码行数，更少的bugs！ https://asecuritysite.com/nacl @fermatslibrary：在信息论中，字符串的 Kolmogorov 复杂度定义为可以生成该字符串作为输出的最短程序的长度。它提供了一种量化字符串信息内容的方法： @mkoeppe_math：发布SageMath 9.8 且在Github开源 https://github.com/sagemath/sage 新的多项式系统 (msolve)、混合整数优化问题 (SCIP Optimization Suite)、半定规划（DSDP、SCIP-SDP）和 SAT (Kissat) 的求解器。 @Brendan：一年前Polygon只被视为权宜之计，一个在全部过渡到L2之前满足当下需求的EVM 侧链。今天，Polygon 拥有最快的 ZK 技术和第一个可用于生产的 zkEVM。怎么做到的？论反馈循环和专业化…… 对于 ZK，性能非常重要。 当然，证明可并行，但下面两者之间存在着巨大的差异： 使用许多 GPU，每笔交易证明时间30 分钟 Polygon zkEVM 可以在 CPU 上在 2.5 分钟内证明 10m 的gas的批量（这还会进一步下降！）。 Polygon 是如何变得如此之快的？我们有一个整个团队（Zero）在致力于研发，其任务是构建业内最快的 ZK 证明者。Zero 拥有非常强大的密码学家和工程师，这创造了一个具有巨大好处的反馈循环。 密码学学术界重点关注的主要是渐近（big-O）性能。 你的证明系统是否使用 O(nlogn) 的域操作、O(n) 的群操作等？当然是有性能基准测试，但它们的用处不大，因为这些实现没有得到高度优化。Zero的认识是常数因子也很重要！ 这创建了一个反馈循环——密码学家与工程师合作，以识别和使用更有效的工具（更小的域、更快的哈希函数），从而产生更快的 ZK 证明者。举个例子：理论研究人员可能无法区分各个使用 O(nlogn) 次域操作的证明系统。但从性能的角度来看，其他条件相同时，使用 256 位域的证明者将比使用由 Polygon 发现的 64 位 Goldilocks 域的证明者慢得多。密码学家设计证明系统以使用更高效的原语 + 工程师进一步优化这些原语以用于硬件 = 🤯 突然间，我们有了令人难以置信的性能证明者，我们可以将其交给 zkEVM 大师 @jbaylina 以进行合作。 Polygon反驳了 EVM 等价的 zkEVM（扩展的圣杯）还有 3-5 年距离的传统观点。zkEVM 已经来了。 现在在测试网上，很快就会在主网上。与此同时，Zero团队正在展望未来…… @Alin Tomescu：许多人喜欢对他们的Merkle树的叶子进行排序，以此作为证明非成员资格的一种方式。 在这篇博文中，我给出了 3 个为什么这是次优的原因，并试图说服你几乎总是使用 Merkle trie（前缀树）： https://alinush.github.io/2023/02/05/Why-you-should-probably-never-sort-your-Merkle-trees-leaves.html 太长不看版：当摘要被恶意生成时，带有排序叶子的 Merkle 树是不安全的（见截图）。 这种情况实际上出现在证书透明度 (CT) 等真实应用中。 这种错误排序完全破坏了安全性：恶意服务器可以证明元素 8 不在树中，同时也证明 8 在树中。 这使得任何 Merkle 证明对任何客户都毫无意义。 例如，这是 8 的恶意非成员证明： …这里还有一个8的恶意的成员资格证明 。 糟糕 ：） 不过，并非所有的希望都破灭了。 在某些场景中，假设 Merkle 树（以及 Merkle 根）计算正确是安全的，因此这种攻击不会发生。 例如，在拜占庭容错系统或“区块链”中。但不是在密钥透明度中，那里有一个恶意服务器。即便如此，具有排序叶子的 Merkle 树还有其他问题，应该尽可能避免：（1）它们不能有效更新，以及（2）它们具有次优的证明大小。为了避免所有这些痛苦，请使用 Merkle tries！ 它们既简单又安全，即使在恶意生成摘要时。 @13 yo VC ：什么是 RISC Zero以及为什么它是创建 ZK 应用的游戏规则改变者？ 这里是一份CPU、指令集架构、操作码等如何与@RiscZero 结合在一起的简单易懂的分解线程： CPU 运行机器并执行计算。CPU 根据其指令集架构 (ISA) 解释指令，ISA 确定操作码（电路和位操作）。因此，ISA 定义了软件如何使用 CPU。 常见的 ISA：ARM、X86、RISC-V，甚至 EVM（“虚拟 ISA”）。 其中，@risc_v 的新颖之处在于它是开源的，并得到广泛的行业联盟和开发者生态系统的支持，也是最高效、最快的指令集。 ZKP 是通过对电路生成多项式创建的。 zkEVM 想要用 EVM 制作电路，以便每个 EVM 计算都可以产生 ZKP。但EVM 最初并不是为 ZKP 设计的。因此，@RiscZero 不是让 ZK 根据 EVM 工作，而是通过从头开始重新设计 RISC-V 指令集的电路来创建 zkVM，以便从 RISC-V ISA 的任何指令中生成 ZKP。因此，任何在 zkVM 上运行的东西都可以生成 ZKP 计算。 由于 RISC-V 是开源的，能够为 ZKP 生成添加自定义加速器，因此它将支持更快的计算和证明者/验证者生成。可以查看 http://delendum.xyz/2023/01/11/zk-system-benchmarking.html以获得基准测试。而且 b/c RISC-V 已经拥有自己的社区和编译器，现有对 Rust 和 C++ 等通用语言的向后兼容性支持，与 Solidity/Cairo 等其他语言相比，它们更主流，支持库/包更多 . 总而言之，@RiscZero zkVM 是一台可验证的计算机，它像真正的嵌入式 RISC-V 处理器一样工作，使开发人员能够像编写任何其他代码（如 Rust 和 C++）一样编写 ZK 证明。它通过将现有语言和工具引入 ZKP 开发来消除障碍。 @Jordi Baylina ：FFLONK 已经在#snarkJS 中可用了！ 首先，我要感谢@aztecnetwork 的@rel_zeta_tech 和@Zac_Aztec创建了这个惊人的协议。FFLONK 与 GROTH16 或 PLONK 一样，是一种 zkSNARK 协议，具有以下优点： 不需要特定的可信设置（仅需通用设置）。 可以在链上验证证明，比 Groth16 便宜一点，比普通 PLONK 便宜 30%。 唯一的缺点是证明生成比 Groth16 慢 10 倍左右。这在@0xPolygon #zkEVM 上下文中不是大问题。我们仅在聚合许多批次证明的证明的最后递归阶段使用 SNARK。该电路相对较小，成本在许多批量证明中均摊。最后一个阶段的当前证明时间约为 2 分钟，但我们的目标是在进行一些未决优化后不到 1 分钟。Gas 成本验证为 203K，优于 Groth16 的 230K gas 和 PLONK 的 300K。一旦我们对该实现进行了良好的审核，我们将在Polygon主网 zkEVM 中使用该协议。 （寻求专家审议） @Sin7y - Ola：非常高兴地宣布OlaVM 的概念验证已经完成！ 工程设计和实现的细节可以在https://github.com/Sin7Y/olavm 找到；通过 Ola，我们寻求构建一个具有可编程隐私、可编程可扩展性和开发人员兼容性的一站式平台，以支持Ethereum 生态；Ola将由零知识虚拟机OlaVM、智能合约语言Ola-lang、Ola-compiler、Ola-sequencer等组成。除了完成概念验证，我们还完成了Olang的设计和实现（详见 https://github.com/Sin7Y/ola-lang）；Ola-lang已成功集成到对开发者友好的IDE——Visual Studio Code中，开发者可以在VSCode上编写Ola-lang程序，调用程序函数，生成证明和验证流程（下载地址：https://marketplace.visualstudio.com/items?itemName=Sin7y.ola); OlaVM 概念验证的完成标志着 Ola 的一个里程碑。 我们相信可编程的可扩展性和隐私性将是以太坊乃至区块链行业未来的重要特征；如果您希望与我们合作赋能以太坊区块链并共同建立 Ola 生态和社区，请加入 Sin7y - Ola DC 服务器 (https://discord.gg/vDFy7YEG6j) 或联系我们 在 contact@sin7y.org。 欢迎任何形式的贡献！要了解有关Ola 当前发展和未来计划的更多信息，请阅读下面的文章。 https://medium.com/@sin7y/unveiling-olavm-proof-of-concept-the-next-generation-full-featured-zkvm-5840b27f8e4c @Binance：我们团队本周对Binance 储备金证明（PoR）验证系统进行了一些升级。该线程总结了这个更新。 我们已经使用 zk-SNARK 升级了我们的储备金证明系统，这是一种零知识验证方法，旨在让您的敏感信息更加私密和安全。@PolyhedraZK说：“在当今的计算能力范围内，破坏现代零知识证明系统的安全性是不可能的。” 作为此次升级的一部分，我们向储备金证明系统添加了四个新代币。现在支持 13 种流行的代币，您可以验证您在我们托管中的持有量。 我们打算在未来几周内继续向Binance 的储备金证明系统添加更多代币。敬请关注。我们将Binance 的储备金证明系统代码开源，因为我们希望继续为我们的用户提供更多透明度，以便行业同行和社区可以从这项创新技术中受益。Binance 还将继续投资于使验证功能更加可靠、安全和私密的技术。通过下面文章详细了解 ZK-SNARK 如何改进币安的储备金证明系统。 https://www.binance.com/en/blog/all/how-zk-snar-ks-improve-binances-proof-of-reserves-system-6654580406550811626 由于这是我们 zk-SNARK 的第一个版本，我们希望鼓励社区提供反馈，以便我们可以继续改进系统。 @Geometry：新研究Sangria，@nico_mnbl 的 PLONK 折叠方案 https://geometry.xyz/notebook/sangria-a-folding-scheme-for-plonk 折叠方案首先在 Nova 中引入，用于构建已知递归开销最低的递归 SNARK。 我们将类似的想法应用于 PLONK 算术化。 什么是折叠方案？ 我们想证明对公共输入 A 和公共输入 B 的计算。折叠方案允许我们将 A 和 B 一起折叠成 C，而不是为每个输入做一个 SNARK。证明 C 足以说服验证者 A 和 B 是正确的！Nova 使用折叠方案来实现增量可验证计算IVC。 即函数 F 被重复应用的证明：z, F(z), F(F(z)), F(F(F(z)))…证明额外的步骤不需要验证之前的证明，而是通过折叠来更新它 目前实现 IVC 的方法有： 完全递归（SNARK的SNARK的 …）如 Plonky2 像halo2一样的分裂和原子累加 Nova的折叠方案做法 我们来快速看看其中的细节并提供概览比较。在完全递归中，在计算的每一步中，我们都会产生一个值 y 和一个证明 P，即“1) 先前的证明是有效的且 2) y = F(prev_state)” 这需要验证这一步电路内部的 S[N/T]ARK。 成本各不相同：Plonky2 为 $O(log(F))$，Groth16 为 3 个配对 。在累加方案中，在每一步开始生成 SNARK 证明，但推迟多项式承诺的昂贵打开。 相反，承诺会累加起来，只在最后打开一次。halo2 (atomic) 需要 $O(log(F))$ 次点加，拆分 acc需要O(1)。 最后看 Nova 的折叠方案，这里直到最后才证明：正如我们所见，折叠方案将两个实例组合为一个。 在每一步，我们将实例折叠成一个正在运行的实例。这需要 O(1) 点加法，但常数更小！虽然 Nova 是为 R1CS 电路设计的，但 Sangria 为 PLONK 算法释放了相同的潜力。与 Nova 推出“relaxed R1CS”的方式相同，Sangria 中的主要成分是“relaxed PLONK”]]></summary></entry></feed>
+<p><img src="https://imgs.zhubai.love/4786481e320f4b4180a267ff258de7bf_2158450480702357504.png" alt="image" /></p>]]></content><author><name>Kurt Pan</name></author><category term="DHOS" /><summary type="html"><![CDATA[StarkWareSessions2023 https://www.youtube.com/playlist?list=PLcIyXLwiPilUs4PiBinyL2ker2oEFT-mc @nico_mnbl: 最近更新了这个！ https://nmohnblatt.github.io/zk-jargon-decoder/foreword.html 新外观：移动到了 mdbook 新条目：Oracle、PLONKish ，并完成了许多空条目，例如 Nullifier、Polynomial Commitment Scheme、Threshold Encryption 改进了一些现有条目，如 R1CS 密码学工具 作者将常用的一些密码学工具的 Web 版，比如生成密钥、哈希、解密加密等等，做在了一起方便使用。 https://crypto-online.cn/ @Steven Galbraith： https://www.nist.gov/news-events/news/2023/02/nist-revises-digital-signature-standard-dss-and-publishes-guideline 用于数字签名的 NIST 联邦信息处理标准 (FIPS) 的新版本已经发布， 另见此处。此版本包括进了 EdDSA。 EdDSA（至少）有两个显着特征。 首先，它与 Schnorr 签名的关系比 ECDSA 更密切。 这意味着它（在我看来）避免了ECDSA 的许多笨拙方面，并允许进行更优雅的安全分析。 其次，它使用Edwards形式的曲线。 具体来说，文件 Recommendations for Discrete Logarithm-based Cryptography: Elliptic Curve Domain Parameters 指出“本建议包括两条新指定的 Edwards 曲线，与传统曲线相比，它们提供更高的性能、抵抗侧信道攻击和更简单的实现”。 这些曲线包括广泛使用的 Edwards25519 曲线。我还借此机会宣传此页面，其中列出了使用 Ed25519 的应用程序。 NIST 选择“轻量级密码学”算法来保护小型设备。这些算法旨在保护由物联网和其他小型电子产品创建和传输的数据。 https://www.nist.gov/news-events/news/2023/02/nist-selects-lightweight-cryptography-algorithms-protect-small-devices 零知识证明 (ZKP) 是区块链的未来吗？在对消费者数据隐私的新兴趣和零知识以太坊虚拟机 (zkEVM) 的发展的推动下，整个 ZKP 生态系统的创新呈爆炸式增长。 https://www.bvp.com/atlas/are-zero-knowledge-proofs-zkps-the-future-of-blockchain @Ingo_zk：这是我们演讲“ECNTT 简介”的幻灯片 https://www.ingonyama.com/blogs/intro-to-ecntt-from-starkware-sessions-2023 @federicocarrone：我刚刚结束了与我们团队的 20 名工程师、数学家、物理学家、密码学家和计算机科学家的会议，他们刚刚开始在 lambdaworks 和我们的 rust证明者中的starknet 的工作。 看看这个库并了解我们如何构建的： https://github.com/lambdaclass/lambdaworks @sproule_：zk力量尽在您掌中！ zk 的独特属性比以往任何时候都更能通过突破性的新工具提供给所有级别的开发人员。我通过这些选项整理了一份指南，有助于剖析关键的权衡： https://blockchain.capital/a-developers-guide-to-the-zkgalaxy/ @verumlotus：周末hack ： 建立了一个网站，允许你用 ZK友好哈希（MiMC 和 Poseidon）计算任何输入的哈希值，在各种椭圆曲线上，包括 BN-128 和来自@ElectricCoinCo的pasta曲线 https://zk-hashes.vercel.app/ 上个月在搞一个使用Nova（需要Vesta曲线）的ZK 项目时有了这个想法。 生成 MiMC/Poseidon 哈希的唯一方法是编写 Circom 电路并记录输出。它适用于高达 50 维的数字、向量和矩阵。 MiMC 是从@0xPARC的@darkforest_eth 实现中改来的，而 Poseidon 是由@identhree的实现中改来的。 这里是源代码： https://github.com/verumlotus/ZK-Hashes SAFE (Sponge API for Field Elements) – ZK Hash 应用的工具箱 https://hackmd.io/bHgsH6mMStCVibM_wYvb2w @Braavos：Braavos 钱包账户合约以及快速ECDSA实现现已开源！ https://github.com/myBraavos/braavos-account-cairo https://github.com/myBraavos/efficient-secp256r1 @Braavos：宣布账户抽象安全金字塔！ https://twitter.com/myBraavos/status/1622548536444305411 @crypto_carsten：我们花了一些时间列出了 MPC（和其他一些隐私增强技术）在经典金融和 Defi 中的使用情况。 https://eprint.iacr.org/2023/122 @Ariel Gabizon：Does someone know by what factor roughly is multiplication in goldilocks faster than e.g. the bn254 field? https://twitter.com/rel_zeta_tech/status/1622984483359129601 @λFederico Carrone：starknet_in_rust 是 StarkNet 在 Rust 中的一个实现。 使用 cairo-rs，即 Cairo 虚拟机的 Rust 实现。 https://github.com/lambdaclass/starknet_in_rust @smpalladino：在研究了如何构建零知识证明一段时间后，我整理了一篇文章，阐述了我从开发人员的角度所学到的知识。包括以下代码示例：Circom/Halo2/Noir https://dev.to/spalladino/a-beginners-intro-to-coding-zero-knowledge-proofs-c56 @λFederico Carrone：正在研究 STARKs 递归、SNARKs 和 IVC 相关内容。 我们仍然不了解有关 STARK 中递归的一些事情，但我们已经看到它们比我们原先想象的更强大。 我们将在接下来的几周内在帖子中进行解释。 @sofía celi：Gregor Seiler 非常有趣的博士论文：“实用的基于格的零知识证明系统” https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/560505/1/thesis.pdf @makoto_inoue：ENS at StarkWare Sessions https://ens.mirror.xyz/Lznxnu4tBovdWcsv7QHFCieXaTddpdKKDrN4nfZSzxk @Prof B Buchanan OBE：OpenSSL 已经变得臃肿，漏洞不断，但 NaCl 已经将编程剥离到一些最受信任的方法，例如 Curve 25519（X25519 和 Ed25519）、AES GCM、Blake2b 和 XChaCha20。 更少的代码行数，更少的bugs！ https://asecuritysite.com/nacl @fermatslibrary：在信息论中，字符串的 Kolmogorov 复杂度定义为可以生成该字符串作为输出的最短程序的长度。它提供了一种量化字符串信息内容的方法： @mkoeppe_math：发布SageMath 9.8 且在Github开源 https://github.com/sagemath/sage 新的多项式系统 (msolve)、混合整数优化问题 (SCIP Optimization Suite)、半定规划（DSDP、SCIP-SDP）和 SAT (Kissat) 的求解器。 @Brendan：一年前Polygon只被视为权宜之计，一个在全部过渡到L2之前满足当下需求的EVM 侧链。今天，Polygon 拥有最快的 ZK 技术和第一个可用于生产的 zkEVM。怎么做到的？论反馈循环和专业化…… 对于 ZK，性能非常重要。 当然，证明可并行，但下面两者之间存在着巨大的差异： 使用许多 GPU，每笔交易证明时间30 分钟 Polygon zkEVM 可以在 CPU 上在 2.5 分钟内证明 10m 的gas的批量（这还会进一步下降！）。 Polygon 是如何变得如此之快的？我们有一个整个团队（Zero）在致力于研发，其任务是构建业内最快的 ZK 证明者。Zero 拥有非常强大的密码学家和工程师，这创造了一个具有巨大好处的反馈循环。 密码学学术界重点关注的主要是渐近（big-O）性能。 你的证明系统是否使用 O(nlogn) 的域操作、O(n) 的群操作等？当然是有性能基准测试，但它们的用处不大，因为这些实现没有得到高度优化。Zero的认识是常数因子也很重要！ 这创建了一个反馈循环——密码学家与工程师合作，以识别和使用更有效的工具（更小的域、更快的哈希函数），从而产生更快的 ZK 证明者。举个例子：理论研究人员可能无法区分各个使用 O(nlogn) 次域操作的证明系统。但从性能的角度来看，其他条件相同时，使用 256 位域的证明者将比使用由 Polygon 发现的 64 位 Goldilocks 域的证明者慢得多。密码学家设计证明系统以使用更高效的原语 + 工程师进一步优化这些原语以用于硬件 = 🤯 突然间，我们有了令人难以置信的性能证明者，我们可以将其交给 zkEVM 大师 @jbaylina 以进行合作。 Polygon反驳了 EVM 等价的 zkEVM（扩展的圣杯）还有 3-5 年距离的传统观点。zkEVM 已经来了。 现在在测试网上，很快就会在主网上。与此同时，Zero团队正在展望未来…… @Alin Tomescu：许多人喜欢对他们的Merkle树的叶子进行排序，以此作为证明非成员资格的一种方式。 在这篇博文中，我给出了 3 个为什么这是次优的原因，并试图说服你几乎总是使用 Merkle trie（前缀树）： https://alinush.github.io/2023/02/05/Why-you-should-probably-never-sort-your-Merkle-trees-leaves.html 太长不看版：当摘要被恶意生成时，带有排序叶子的 Merkle 树是不安全的（见截图）。 这种情况实际上出现在证书透明度 (CT) 等真实应用中。 这种错误排序完全破坏了安全性：恶意服务器可以证明元素 8 不在树中，同时也证明 8 在树中。 这使得任何 Merkle 证明对任何客户都毫无意义。 例如，这是 8 的恶意非成员证明： …这里还有一个8的恶意的成员资格证明 。 糟糕 ：） 不过，并非所有的希望都破灭了。 在某些场景中，假设 Merkle 树（以及 Merkle 根）计算正确是安全的，因此这种攻击不会发生。 例如，在拜占庭容错系统或“区块链”中。但不是在密钥透明度中，那里有一个恶意服务器。即便如此，具有排序叶子的 Merkle 树还有其他问题，应该尽可能避免：（1）它们不能有效更新，以及（2）它们具有次优的证明大小。为了避免所有这些痛苦，请使用 Merkle tries！ 它们既简单又安全，即使在恶意生成摘要时。 @13 yo VC ：什么是 RISC Zero以及为什么它是创建 ZK 应用的游戏规则改变者？ 这里是一份CPU、指令集架构、操作码等如何与@RiscZero 结合在一起的简单易懂的分解线程： CPU 运行机器并执行计算。CPU 根据其指令集架构 (ISA) 解释指令，ISA 确定操作码（电路和位操作）。因此，ISA 定义了软件如何使用 CPU。 常见的 ISA：ARM、X86、RISC-V，甚至 EVM（“虚拟 ISA”）。 其中，@risc_v 的新颖之处在于它是开源的，并得到广泛的行业联盟和开发者生态系统的支持，也是最高效、最快的指令集。 ZKP 是通过对电路生成多项式创建的。 zkEVM 想要用 EVM 制作电路，以便每个 EVM 计算都可以产生 ZKP。但EVM 最初并不是为 ZKP 设计的。因此，@RiscZero 不是让 ZK 根据 EVM 工作，而是通过从头开始重新设计 RISC-V 指令集的电路来创建 zkVM，以便从 RISC-V ISA 的任何指令中生成 ZKP。因此，任何在 zkVM 上运行的东西都可以生成 ZKP 计算。 由于 RISC-V 是开源的，能够为 ZKP 生成添加自定义加速器，因此它将支持更快的计算和证明者/验证者生成。可以查看 http://delendum.xyz/2023/01/11/zk-system-benchmarking.html以获得基准测试。而且 b/c RISC-V 已经拥有自己的社区和编译器，现有对 Rust 和 C++ 等通用语言的向后兼容性支持，与 Solidity/Cairo 等其他语言相比，它们更主流，支持库/包更多 . 总而言之，@RiscZero zkVM 是一台可验证的计算机，它像真正的嵌入式 RISC-V 处理器一样工作，使开发人员能够像编写任何其他代码（如 Rust 和 C++）一样编写 ZK 证明。它通过将现有语言和工具引入 ZKP 开发来消除障碍。 @Jordi Baylina ：FFLONK 已经在#snarkJS 中可用了！ 首先，我要感谢@aztecnetwork 的@rel_zeta_tech 和@Zac_Aztec创建了这个惊人的协议。FFLONK 与 GROTH16 或 PLONK 一样，是一种 zkSNARK 协议，具有以下优点： 不需要特定的可信设置（仅需通用设置）。 可以在链上验证证明，比 Groth16 便宜一点，比普通 PLONK 便宜 30%。 唯一的缺点是证明生成比 Groth16 慢 10 倍左右。这在@0xPolygon #zkEVM 上下文中不是大问题。我们仅在聚合许多批次证明的证明的最后递归阶段使用 SNARK。该电路相对较小，成本在许多批量证明中均摊。最后一个阶段的当前证明时间约为 2 分钟，但我们的目标是在进行一些未决优化后不到 1 分钟。Gas 成本验证为 203K，优于 Groth16 的 230K gas 和 PLONK 的 300K。一旦我们对该实现进行了良好的审核，我们将在Polygon主网 zkEVM 中使用该协议。 （寻求专家审议） @Sin7y - Ola：非常高兴地宣布OlaVM 的概念验证已经完成！ 工程设计和实现的细节可以在https://github.com/Sin7Y/olavm 找到；通过 Ola，我们寻求构建一个具有可编程隐私、可编程可扩展性和开发人员兼容性的一站式平台，以支持Ethereum 生态；Ola将由零知识虚拟机OlaVM、智能合约语言Ola-lang、Ola-compiler、Ola-sequencer等组成。除了完成概念验证，我们还完成了Olang的设计和实现（详见 https://github.com/Sin7Y/ola-lang）；Ola-lang已成功集成到对开发者友好的IDE——Visual Studio Code中，开发者可以在VSCode上编写Ola-lang程序，调用程序函数，生成证明和验证流程（下载地址：https://marketplace.visualstudio.com/items?itemName=Sin7y.ola); OlaVM 概念验证的完成标志着 Ola 的一个里程碑。 我们相信可编程的可扩展性和隐私性将是以太坊乃至区块链行业未来的重要特征；如果您希望与我们合作赋能以太坊区块链并共同建立 Ola 生态和社区，请加入 Sin7y - Ola DC 服务器 (https://discord.gg/vDFy7YEG6j) 或联系我们 在 contact@sin7y.org。 欢迎任何形式的贡献！要了解有关Ola 当前发展和未来计划的更多信息，请阅读下面的文章。 https://medium.com/@sin7y/unveiling-olavm-proof-of-concept-the-next-generation-full-featured-zkvm-5840b27f8e4c @Binance：我们团队本周对Binance 储备金证明（PoR）验证系统进行了一些升级。该线程总结了这个更新。 我们已经使用 zk-SNARK 升级了我们的储备金证明系统，这是一种零知识验证方法，旨在让您的敏感信息更加私密和安全。@PolyhedraZK说：“在当今的计算能力范围内，破坏现代零知识证明系统的安全性是不可能的。” 作为此次升级的一部分，我们向储备金证明系统添加了四个新代币。现在支持 13 种流行的代币，您可以验证您在我们托管中的持有量。 我们打算在未来几周内继续向Binance 的储备金证明系统添加更多代币。敬请关注。我们将Binance 的储备金证明系统代码开源，因为我们希望继续为我们的用户提供更多透明度，以便行业同行和社区可以从这项创新技术中受益。Binance 还将继续投资于使验证功能更加可靠、安全和私密的技术。通过下面文章详细了解 ZK-SNARK 如何改进币安的储备金证明系统。 https://www.binance.com/en/blog/all/how-zk-snar-ks-improve-binances-proof-of-reserves-system-6654580406550811626 由于这是我们 zk-SNARK 的第一个版本，我们希望鼓励社区提供反馈，以便我们可以继续改进系统。 @Geometry：新研究Sangria，@nico_mnbl 的 PLONK 折叠方案 https://geometry.xyz/notebook/sangria-a-folding-scheme-for-plonk 折叠方案首先在 Nova 中引入，用于构建已知递归开销最低的递归 SNARK。 我们将类似的想法应用于 PLONK 算术化。 什么是折叠方案？ 我们想证明对公共输入 A 和公共输入 B 的计算。折叠方案允许我们将 A 和 B 一起折叠成 C，而不是为每个输入做一个 SNARK。证明 C 足以说服验证者 A 和 B 是正确的！Nova 使用折叠方案来实现增量可验证计算IVC。 即函数 F 被重复应用的证明：z, F(z), F(F(z)), F(F(F(z)))…证明额外的步骤不需要验证之前的证明，而是通过折叠来更新它 目前实现 IVC 的方法有： 完全递归（SNARK的SNARK的 …）如 Plonky2 像halo2一样的分裂和原子累加 Nova的折叠方案做法 我们来快速看看其中的细节并提供概览比较。在完全递归中，在计算的每一步中，我们都会产生一个值 y 和一个证明 P，即“1) 先前的证明是有效的且 2) y = F(prev_state)” 这需要验证这一步电路内部的 S[N/T]ARK。 成本各不相同：Plonky2 为 $O(log(F))$，Groth16 为 3 个配对 。在累加方案中，在每一步开始生成 SNARK 证明，但推迟多项式承诺的昂贵打开。 相反，承诺会累加起来，只在最后打开一次。halo2 (atomic) 需要 $O(log(F))$ 次点加，拆分 acc需要O(1)。 最后看 Nova 的折叠方案，这里直到最后才证明：正如我们所见，折叠方案将两个实例组合为一个。 在每一步，我们将实例折叠成一个正在运行的实例。这需要 O(1) 点加法，但常数更小！虽然 Nova 是为 R1CS 电路设计的，但 Sangria 为 PLONK 算法释放了相同的潜力。与 Nova 推出“relaxed R1CS”的方式相同，Sangria 中的主要成分是“relaxed PLONK”]]></summary></entry><entry><title type="html">使用 SNARKs 批处理 ECDSA 签名</title><link href="http://localhost:4000/2022/08/01/batch-ecdsa.html" rel="alternate" type="text/html" title="使用 SNARKs 批处理 ECDSA 签名" /><published>2022-08-01T08:00:00+08:00</published><updated>2022-08-01T08:00:00+08:00</updated><id>http://localhost:4000/2022/08/01/batch-ecdsa</id><content type="html" xml:base="http://localhost:4000/2022/08/01/batch-ecdsa.html"><![CDATA[<blockquote>
+  <ul>
+    <li>原文：<a href="https://0xparc.org/blog/batch-ecdsa">Batch ECDSA in SNARKs</a></li>
+    <li>作者：John Guibas, Uma Roy</li>
+    <li>译者：Kurt Pan</li>
+  </ul>
+</blockquote>
+
+<p class="info">我们带来了 <a href="https://github.com/puma314/batch-ecdsa">circom-batch-ECDSA</a>，一个基于<a href="https://github.com/0xPARC/circom-ecdsa">circom-ECDSA</a>（由0xPARC 社区中其他人之前完成的工作）之上的概念验证实现，其灵感来自<a href="https://github.com/privacy-scaling-explorations/halo2wrong/pull/22">halo2-batch-ECDSA</a>，它允许在单个 SNARK 中显著更快地验证一批 ECDSA 签名。</p>
+
+<!--more-->
+<h2 id="简介">简介</h2>
+
+<p>ECDSA 签名是一种广泛使用的密码学原语，可使人确信一条消息只能来自拥有特定公钥的人。在区块链场景中，ECDSA 签名通常用于验证提交的交易是否来自拥有发出交易的账户的人。</p>
+
+<p>0xPARC 的 <a href="https://0xparc.org/blog/zk-ecdsa-1">circom-ECDSA 项目</a>在一个zkSNARK中实现了 ECDSA 签名验证。这个原语造成了一波应用的小规模爆炸式增长，这些应用利用了在 SNARK 中的 ECDSA 验证来匿名地验证你控制一组地址中的一个以太坊地址。此类项目包括<a href="https://www.cabal.xyz/">cabal</a>、<a href="https://zkmessage.xyz/">zkmessage</a>和<a href="https://heyanon.xyz/">heyanon</a>。</p>
+
+<p><code class="language-plaintext highlighter-rouge">circom-batch-ECDSA</code> 实现了一个可以对<em>批量</em>的ECDSA 签名进行优化验证的原语。与 <code class="language-plaintext highlighter-rouge">circom-ECDSA</code> 一样，<code class="language-plaintext highlighter-rouge">circom-batch-ECDSA</code> 具有广阔的应用场景，从加速 ZK rollups到支持新的身份原语。批处理 ECDSA 未来还可能用于降低optimistic rollups等应用中的<code class="language-plaintext highlighter-rouge">calldata</code>开销——根据当前的gas标准，粗略的基准测试表明用 SNARK 证明替换 ECDSA 签名可以将<code class="language-plaintext highlighter-rouge">calldata</code>开销降低多达 18%。</p>
+
+<h2 id="动机降低optimistic-rollups的交易费">动机：降低Optimistic Rollups的交易费？</h2>
+<p>本节中我们会详述批处理 ECDSA 验证最引人注目的潜在用例之一——帮助 L2 rollups节省 gas 开销！我们还没有用我们的电路实现这个，但是这个用例是实现这个原语背后的一个很大的动机。</p>
+
+<p>Optimistic rollups，例如<a href="https://www.optimism.io/">Optimism</a>或<a href="https://arbitrum.io/">Arbitrum</a>，使用“定序器”离线处理批量交易，然后定期将状态根更新发布到以太坊主网。作为更新的一部分，他们将这批中的所有交易发布到 <code class="language-plaintext highlighter-rouge">calldata</code>，以便所有用户都可以使用此信息（并且可以供希望通过发布欺诈证明来挑战状态更新的人使用）。您可以看到分别为<a href="https://etherscan.io/address/0x4bf681894abec828b212c906082b444ceb2f6cf6">Optimism</a>和<a href="https://etherscan.io/address/0x9685e7281fb1507b6f141758d80b08752faf0c43#code">Arbitrum</a>实现此功能的合约。<em>降低optimistic rollups开销的关键就是尽可能地压缩这些数据。</em></p>
+
+<p>我们的主要洞察在于 ECDSA 签名是“不可伪造的”数据。如果我们可以证明某人知道对一个消息的有效签名，则可以替换签名本身。我们的想法是用单个批处理 ECDSA SNARK 替换一批交易上的所有签名，该SNARK证明了定序器知道所有这些交易的有效签名。除了 SNARK 证明，我们还必须包括每笔交易的发送者地址，因为<code class="language-plaintext highlighter-rouge">ecrecover</code>通常依赖于交易的存在来恢复发送者。</p>
+
+<p>ECDSA 签名每个是 64 字节，而 groth16 证明是 131 字节。如果我们能够用 1 个批处理 ECDSA SNARK 和 50 个地址（每个 22 字节）替换 50 个 ECDSA 签名，那么我们就将3200 字节替换为1231字节，从而显着节省了成本。一般来说，我们可以替换掉带有$N$个22 字节地址的$N$个64 字节的签名，通过引入 131 字节的固定开销（SNARK 证明的大小）。</p>
+
+<p>在对CTC的每个承诺中，Optimism 都会放置大约 200 个 ECDSA 签名，这需要花费 $200000=16\cdot64\cdot200$ gas。如果我们将其替换为单个 SNARK 证明（131 字节）和发送者地址（每笔交易 22 字节），则该gas开销降低到 $66 ,000$ gas。以每5分钟一个CTC块和30gwei 的 gas 开销计算，每天可以节省约 1.1 ETH！</p>
+
+<p>尽管无论电路的复杂性如何，SNARK 证明的大小和验证开销始终相同，但优化电路有助于满足rollups的延迟要求，因为必须为每个块生成 SNARK 证明。</p>
+
+<h2 id="数学回顾">数学回顾</h2>
+
+<p>下面给出对 <strong>ECDSA 签名生成和验证过程</strong>的快速数学回顾（主要遵循<a href="https://en.wikipedia.org/wiki/Elliptic_Curve_Digital_Signature_Algorithm">Wikipedia 文章</a>中的术语）。这是去了解为什么 <code class="language-plaintext highlighter-rouge">circom-batch-ECDSA</code> 是比将 <code class="language-plaintext highlighter-rouge">circom-ECDSA</code> 电路包在一个 for 循环中更有效的优化方法的重要背景。</p>
+
+<p>固定$n$阶椭圆曲线群，生成元为$G$ 。令私钥为$d$ ，相关公钥为 $Q=d \cdot G$ 。</p>
+
+<p>给定消息$m$，以如下方式生成由公钥$Q$签署的对消息$m$的签名：</p>
+
+<ul>
+  <li>计算消息$m$的哈希$h=H(m)$ , 假设 $H(m) \in$ $[1, n)$</li>
+  <li>随机选择 $k \in[1, n)$</li>
+  <li>计算曲线点 $\left(x_1, y_1\right)=k \cdot G$</li>
+  <li>计算$r \equiv x_1 \bmod n$</li>
+  <li>计算$s \equiv k^{-1}(h+r \cdot d) \bmod n$</li>
+</ul>
+
+<p>要验证对公钥$Q$和消息$m$的签名$(r, s)$，需进行如下检验：</p>
+<ul>
+  <li>$Q$ 是一个有效公钥</li>
+  <li>是否$(x, y)=\left(H(m) s^{-1}\right) \cdot G+\left(r s^{-1}\right) \cdot Q$</li>
+  <li>是否 $(x, y) \neq O$ (即不是无穷远点)</li>
+  <li>是否$r \equiv x \bmod n$.</li>
+</ul>
+
+<p>对于批处理 ECDSA，我们还需要熟悉一种称为 <strong>ECDSA*</strong> 的 ECDSA 变体，其中用户除了提供$r,s$，还提供一个$r’$ 使得$R=( r ,r’)=( x_1,y_1)$，其中验证条件如下：</p>
+
+<ul>
+  <li>$Q$ 是一个有效公钥</li>
+  <li>验证$R=\left(H(m) s^{-1}\right) \cdot G+\left(r s^{-1}\right) \cdot Q$</li>
+</ul>
+
+<p>在 ECDSA* 中，用户通过提供$r$是$x$坐标的椭圆曲线点的$y$坐标来简化验证过程。给定一个常规的 ECDSA 签名（只有r), 可以由椭圆曲线方程推导出$r’$。现在起，我们令$R$表示完整的椭圆曲线点，因为我们需要它来进行批量验证。注意如果签名有效，则组成$R=( r ,r’)$的$r’$一直存在，所以$R$的存在性得以保证。</p>
+
+<h2 id="批处理-ecdsa-验证">批处理 ECDSA 验证</h2>
+
+<h3 id="朴素方法">朴素方法</h3>
+
+<p>朴素的ECDSA批处理验证会输入一批（$B$个）ECDSA签名 $\left(r_i, s_i\right)$ ，分别验证所有的签名对消息$m_i$和公钥$Q_i$都是有效的。一种朴素的批处理验证方法就是简单地遍历这一批中的签名，通过计算上述方程单独验证每个签名，如果所有签名都得以验证，则返回 <code class="language-plaintext highlighter-rouge">true</code> 。使用 <code class="language-plaintext highlighter-rouge">circom-ecdsa</code> 库，我们可以朴素地在 SNARK 中实现批处理 ECDSA 验证，只需遍历所有$B$个签名并将 ECDSA 验证原语依次应用于每个签名。</p>
+
+<h3 id="能做得更好吗">能做得更好吗</h3>
+
+<p>事实证明我们可以！如该<a href="https://eprint.iacr.org/2012/582.pdf">笔记</a>所述，可能在保持正确的安全保证下，将对$B$个ECDSA签名的验证约简为单个代数方程。</p>
+
+<p>给定一个随机域元素$t$，批处理验证签名等价于检验下列椭圆曲线点等式：（方程（1））</p>
+
+\[\sum_i t^i \cdot R_i=\left(\sum_i t^i\left(h_i s_i^{-1}\right)\right) \cdot G+\left(\sum_i t^i\left(r_i s_i^{-1}\right)\right) \cdot Q_i\]
+
+<p>$R_i$ 指$\left(r_i, r_i^{\prime}\right)$，即这里是ECDSA*签名。</p>
+
+<p>为什么这等价于单独验证所有$B$个签名？考虑下列多项式方程（方程（2））：</p>
+
+\[\sum_i x^i \cdot R_i=\sum_i x^i\left(\left(h_i s_i^{-1}\right) \cdot G+\left(r_i s_i^{-1}\right) \cdot Q_i\right)\]
+
+<p>注意到这个多项式方程成立当且仅当所有$B$个签名是有效的（因为左右两边$x^i$ 的系数正是ECDSA*验证方程中的左右两边）。但是根据<a href="https://en.wikipedia.org/wiki/Schwartz%E2%80%93Zippel_lemma">Schwartz Zippel 引理</a>，如果我们在某个随机点$t$处对两个多项式求值且两个值相等，这意味着这两个多项式实际上以非常高的概率是相同的。可以注意到方程 (1) 只是对方程 (2)在随机点$t$处的求值结果（以及带有一些系数分布）。因此根据 Schwartz Zippel 引理，如果我们选择一个随机的$t$并证明方程（1）中的等式，则等价于验证所有$B$个签名。</p>
+
+<p>Schwartz Zippel 引理要想成立$t$必须是“随机”的！在 SNARK 电路中，没有对随机性的（像 CPU 上一样的）“原生”访问，所以我们通过将所有输入哈希到SNARK中，构造了一个确定性伪随机的$t$。</p>
+
+<h3 id="窗口法和平摊倍点">窗口法和平摊倍点</h3>
+
+<p>在SNARKs中实现这些密码学协议时，标量乘法和椭圆曲线点的加法会非常昂贵，这是因为在以太坊中用于ECDSA签名的椭圆曲线（例如<a href="https://en.bitcoin.it/wiki/Secp256k1">secp256k1</a>）对于SNARKs中的算术来说是“域外”的存在。</p>
+
+<p>计算方程 (1) 中的代数表达式可能看起来很昂贵，但对于计算椭圆曲线点的线性组合，有几个相当高效的优化方法。为了高效计算椭圆曲线点$P$的标量$d$倍数，我们可以使用<strong>窗口法</strong>来高效地计算标量倍数。</p>
+
+<p>在窗口法中，选择一个窗口大小$w$ 并对$d=0, \ldots, 2^{w-1}$计算全部$2^w$ 个$dP$值。算法使用$d$ 在基$2^w$ 下的表示$\left(d_0, \ldots, d_m\right)$来高效地计算$dP$：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Q</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">reversed</span><span class="p">(</span><span class="nf">range</span><span class="p">(</span><span class="n">m</span><span class="o">+</span><span class="mi">1</span><span class="p">)):</span>
+  <span class="n">Q</span> <span class="o">=</span> <span class="nf">point_double_repeat</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+  <span class="k">if</span> <span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+      <span class="n">Q</span> <span class="o">=</span> <span class="nf">point_add</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">P</span><span class="p">)</span> <span class="c1"># 使用的d[i]*P的预计算值
+</span><span class="k">return</span> <span class="n">Q</span>
+</code></pre></div></div>
+
+<p><code class="language-plaintext highlighter-rouge">point_double_repeat</code>通过迭代倍点计算$2^w \cdot Q$ 。</p>
+
+<p>我们可以修改这个算法来计算椭圆曲线点的线性组合$d^{(1)} P_1+\ldots+d^{(B)} P_B$ 同时只保留$m$次<code class="language-plaintext highlighter-rouge">point_double_repeat</code>调用：</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">Q</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nf">reversed</span><span class="p">(</span><span class="nf">range</span><span class="p">(</span><span class="n">m</span><span class="o">+</span><span class="mi">1</span><span class="p">)):</span>
+    <span class="n">Q</span> <span class="o">=</span> <span class="nf">point_double_repeat</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">w</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nf">range</span><span class="p">(</span><span class="n">B</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">Q</span> <span class="o">=</span> <span class="nf">point_add</span><span class="p">(</span><span class="n">Q</span><span class="p">,</span> <span class="n">d</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span class="p">]</span><span class="o">*</span><span class="n">P</span><span class="p">)</span> <span class="c1"># 使用的d[i][j]*P的预计算值
+</span><span class="k">return</span> <span class="n">Q</span>
+</code></pre></div></div>
+
+<h3 id="直观理解">直观理解</h3>
+
+<p>对上述算法中哪些操作是“昂贵”的有一个直观的了解是有帮助的。实际上<code class="language-plaintext highlighter-rouge">point_add</code>和<code class="language-plaintext highlighter-rouge">point_double_repeat</code>都是昂贵的，后者比<code class="language-plaintext highlighter-rouge">point_add</code>更昂贵$w$倍。<code class="language-plaintext highlighter-rouge">point_add</code>使用$X$个约束，<code class="language-plaintext highlighter-rouge">point_double_repeat</code>就需要$wX$个约束，因为它需要将椭圆曲线点翻倍$w$次。</p>
+
+<p>如果我们要实现一个朴素方法来单独验证每个签名，对每个签名我们必须做$m$次加和$m$次倍点，这意味着总共需要$m B$ 次加和 $m \cdot w \cdot B$ 次倍点。但是使用这个优化，因为加法发生在内部循环中，我们可以避开对$B$个点进行先行组合的$m \cdot w$ 个倍点操作。这导致了$(B-1)\cdot m \cdot w$个倍点的节省，这是显著的！</p>
+
+<p>我们的基准测试表明，与给<code class="language-plaintext highlighter-rouge">circom-ecdsa</code>简单的for循环包裹相比，这种优化可以节省高达 68% 的电路大小（约束数量）。</p>
+
+<h2 id="代码">代码</h2>
+<ul>
+  <li>核心电路代码在这里：<a href="https://github.com/puma314/batch-ecdsa/blob/master/circuits/batch_ecdsa.circom">https://github.com/puma314/batch-ecdsa/blob/master/circuits/batch_ecdsa.circom</a></li>
+</ul>
+
+<h2 id="基准测试">基准测试</h2>
+
+<p>下表比较了SNARK 中用于批量验证$B$个ECDSA 签名的我们优化的批处理ECDSA 电路和串行的 <code class="language-plaintext highlighter-rouge">circom-ECDSA</code> 验证。<code class="language-plaintext highlighter-rouge">circom-ecdsa</code>需要约150 万个约束来验证 1 个签名，因此朴素地对$B$个签名使用 <code class="language-plaintext highlighter-rouge">circom-EDSA</code>会导致约$150\cdot B$万个约束。</p>
+
+<p>要注意的相关行是<strong>约束</strong>、<strong>见证生成时间</strong>和<strong>证明时间</strong>。因为生成 zkSNARK 证明在计算上非常昂贵（并且与约束数量和信号总数成线性关系），减少约束数量意味着生成证明所需时间更少。我们还显式地测量了证明生成时间（见证生成时间和证明时间的总和）。如下表所示，随着批处理大小$B$增加，加速程度（通常）也会增加<sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup>。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left"> </th>
+      <th style="text-align: left">verify2</th>
+      <th style="text-align: left">verify4</th>
+      <th style="text-align: left">verify8</th>
+      <th style="text-align: left">verify16</th>
+      <th style="text-align: left">verify32</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">约束</td>
+      <td style="text-align: left">1.9M</td>
+      <td style="text-align: left">2.8M</td>
+      <td style="text-align: left">4.6M</td>
+      <td style="text-align: left">8.1M</td>
+      <td style="text-align: left">15.3M</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">见证生成</td>
+      <td style="text-align: left">44s</td>
+      <td style="text-align: left">68s</td>
+      <td style="text-align: left">130s</td>
+      <td style="text-align: left">211s</td>
+      <td style="text-align: left">436s</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">证明时间</td>
+      <td style="text-align: left">4s</td>
+      <td style="text-align: left">7s</td>
+      <td style="text-align: left">14s</td>
+      <td style="text-align: left">40s</td>
+      <td style="text-align: left">86s</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">总证明生成时间</td>
+      <td style="text-align: left">48s</td>
+      <td style="text-align: left">75s</td>
+      <td style="text-align: left">144s</td>
+      <td style="text-align: left">251s</td>
+      <td style="text-align: left">522s</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">证明验证时间</td>
+      <td style="text-align: left">1s</td>
+      <td style="text-align: left">1s</td>
+      <td style="text-align: left">1s</td>
+      <td style="text-align: left">1s</td>
+      <td style="text-align: left">1s</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">朴素见证生成</td>
+      <td style="text-align: left">83s</td>
+      <td style="text-align: left">167s</td>
+      <td style="text-align: left">328s</td>
+      <td style="text-align: left">663s</td>
+      <td style="text-align: left">1360s</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">朴素证明时间</td>
+      <td style="text-align: left">35s</td>
+      <td style="text-align: left">42s</td>
+      <td style="text-align: left">110s</td>
+      <td style="text-align: left">211s</td>
+      <td style="text-align: left">332s</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">总朴素证明生成时间</td>
+      <td style="text-align: left">118s</td>
+      <td style="text-align: left">209s</td>
+      <td style="text-align: left">438s</td>
+      <td style="text-align: left">874s</td>
+      <td style="text-align: left">1692s</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">加速比</td>
+      <td style="text-align: left">2.45x</td>
+      <td style="text-align: left">2.78x</td>
+      <td style="text-align: left">3.04x</td>
+      <td style="text-align: left">3.48x</td>
+      <td style="text-align: left">3.24x</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="电路元数据统计">电路元数据统计</h3>
+<p>在下表中，我们提供了一些有关编译电路和生成证明和验证密钥所用时间的信息。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left"> </th>
+      <th style="text-align: left">verify2</th>
+      <th style="text-align: left">verify4</th>
+      <th style="text-align: left">verify8</th>
+      <th style="text-align: left">verify16</th>
+      <th style="text-align: left">verify32</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">电路编译</td>
+      <td style="text-align: left">162s</td>
+      <td style="text-align: left">186s</td>
+      <td style="text-align: left">345s</td>
+      <td style="text-align: left">579s</td>
+      <td style="text-align: left">1101s</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">可信设置阶段2密钥生成</td>
+      <td style="text-align: left">641s</td>
+      <td style="text-align: left">923s</td>
+      <td style="text-align: left">1485s</td>
+      <td style="text-align: left">2715s</td>
+      <td style="text-align: left">5352s</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">可信设置阶段2贡献</td>
+      <td style="text-align: left">120s</td>
+      <td style="text-align: left">196s</td>
+      <td style="text-align: left">366s</td>
+      <td style="text-align: left">498s</td>
+      <td style="text-align: left">987s</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">证明密钥大小</td>
+      <td style="text-align: left">1.1GB</td>
+      <td style="text-align: left">1.8GB</td>
+      <td style="text-align: left">2.9GB</td>
+      <td style="text-align: left">4.8GB</td>
+      <td style="text-align: left">9.0GB</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">证明密钥验证</td>
+      <td style="text-align: left">709s</td>
+      <td style="text-align: left">1050s</td>
+      <td style="text-align: left">1769s</td>
+      <td style="text-align: left">3198s</td>
+      <td style="text-align: left">6450s</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:1" role="doc-endnote">
+      <p>注意该模式仅在一定程度上成立：<code class="language-plaintext highlighter-rouge">verify32</code> 的加速比比 <code class="language-plaintext highlighter-rouge">verify16</code> 的加速比略低（3.24x 与 3.48x）。 随着电路变大，生成证明所需的内存量也在增加，假设在分析机器上溢出到交换空间中对此起了作用。 <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+  </ol>
+</div>]]></content><author><name>Kurt Pan</name></author><category term="ECDSA签名" /><category term="SNARKs" /><summary type="html"><![CDATA[原文：Batch ECDSA in SNARKs 作者：John Guibas, Uma Roy 译者：Kurt Pan 我们带来了 circom-batch-ECDSA，一个基于circom-ECDSA（由0xPARC 社区中其他人之前完成的工作）之上的概念验证实现，其灵感来自halo2-batch-ECDSA，它允许在单个 SNARK 中显著更快地验证一批 ECDSA 签名。]]></summary></entry></feed>
