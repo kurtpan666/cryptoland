@@ -19,6 +19,19 @@ sidebar:
 ## 引言
 
 
+增量证明系统提供了一些优于传统证明系统的优势：
+
+- 不需要循环迭代的静态边界，更适合具有动态控制流的程序。
+- 需要的内存开销极小，因为证明者只需要与执行一步所需空间成比例的空间，而不是存储整个计算迹。
+- 非常适合证明生成的分布式和并行化。
+证明者可以运行程序，跟踪输入和输出变量以及状态变化，然后使用 CPU 或 GPU 为计算的每个步骤并行生成证明。 更好的是，证明可以方便地聚合成一个，验证者可以检查。
+
+
+
+They are well suited for the distribution and parallelization of proof generation.
+The prover can run the program, keeping track of the input and output variables and state changes, and then generate the proofs in parallel using CPU or GPU for each step of the computation. Better still, the proofs can be conveniently aggregated into a single one, which the verifier can check.
+
+
 ## 非均匀IVC（NIVC）的计算模型
 We can think of the program as a collection of $n+1$ non-deterministic, polynomial time computable functions, $f_1, f_2, \ldots, f_n, \phi$, where each function receives $k$ input and $k$ output variables; each $f_j$ can also take non-deterministic input. The function $\phi$ can take non-deterministic input variables and output an element $j=\phi(z=(x, w))$, choosing one of the $f_i$. Each function is represented as a quadratic rank-one constraint system (R1CS), an NP-complete problem. In IVC, the prover takes as input at step $k\left(k, x_0, x\right)$ and a proof $\Pi_k$ that proves knowledge of witnesses $\left(w_0, w_1, \ldots, w_{k-1}\right)$ such that
 $$
