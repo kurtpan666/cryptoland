@@ -79,6 +79,12 @@ cryptoland:
 
   - title: 证明系统
     children:
+      - title: Nova
+        url: /2023/03/05/nova.html
+      - title: SuperNova
+        url: /2023/03/06/supernova.html
+      - title: Sangria
+        url: /2023/03/07/sangria.html
       - title: 使用 SNARKs 批处理 ECDSA 签名
         url: /2022/08/01/batch-ecdsa.html
 

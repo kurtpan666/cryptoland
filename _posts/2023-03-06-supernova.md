@@ -19,7 +19,7 @@ sidebar:
 ## 引言
 
 
-## 非均匀IVC（NIVC)的计算模型
+## 非均匀IVC（NIVC）的计算模型
 We can think of the program as a collection of $n+1$ non-deterministic, polynomial time computable functions, $f_1, f_2, \ldots, f_n, \phi$, where each function receives $k$ input and $k$ output variables; each $f_j$ can also take non-deterministic input. The function $\phi$ can take non-deterministic input variables and output an element $j=\phi(z=(x, w))$, choosing one of the $f_i$. Each function is represented as a quadratic rank-one constraint system (R1CS), an NP-complete problem. In IVC, the prover takes as input at step $k\left(k, x_0, x\right)$ and a proof $\Pi_k$ that proves knowledge of witnesses $\left(w_0, w_1, \ldots, w_{k-1}\right)$ such that
 $$
 x_{j+1}=F\left(x_j, w_j\right)
