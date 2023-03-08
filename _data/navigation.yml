@@ -70,12 +70,14 @@ cryptoland:
       - title: 哈希到secp256k1椭圆曲线
         url: /2023/02/23/hashtosecp256k1.html
     
-  - title: 多项式承诺
+  - title: 密码原语
     children:
       - title: KZG多项式承诺
         url: https://dankradfeist.de/ethereum/2021/10/13/kate-polynomial-commitments-mandarin.html
+      - title: 内积证明
+        url: https://dankradfeist.de/ethereum/2021/11/18/inner-product-arguments-mandarin.html
 
-  - title: 证明系统应用
+  - title: 证明系统
     children:
       - title: 使用 SNARKs 批处理 ECDSA 签名
         url: /2022/08/01/batch-ecdsa.html
