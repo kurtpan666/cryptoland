@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-03-08T18:06:50+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">Sangria</title><link href="http://localhost:4000/2023/03/07/sangria.html" rel="alternate" type="text/html" title="Sangria" /><published>2023-03-07T08:00:00+08:00</published><updated>2023-03-07T08:00:00+08:00</updated><id>http://localhost:4000/2023/03/07/sangria</id><content type="html" xml:base="http://localhost:4000/2023/03/07/sangria.html"><![CDATA[<blockquote>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-03-26T13:33:01+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">Sangria</title><link href="http://localhost:4000/2023/03/07/sangria.html" rel="alternate" type="text/html" title="Sangria" /><published>2023-03-07T08:00:00+08:00</published><updated>2023-03-07T08:00:00+08:00</updated><id>http://localhost:4000/2023/03/07/sangria</id><content type="html" xml:base="http://localhost:4000/2023/03/07/sangria.html"><![CDATA[<blockquote>
   <ul>
     <li>原文：<a href="https://geometry.xyz/notebook/sangria-a-folding-scheme-for-plonk">Sangria: a Folding Scheme for PLONK
 </a></li>
@@ -28,36 +28,90 @@
 </blockquote>
 
 <h2 id="引言">引言</h2>
-
-<p>增量证明系统提供了一些优于传统证明系统的优势：</p>
+<p>增量证明系统相比于传统证明系统具有如下优势：</p>
 
 <ul>
   <li>不需要循环迭代的静态边界，更适合具有动态控制流的程序。</li>
   <li>需要的内存开销极小，因为证明者只需要与执行一步所需空间成比例的空间，而不是存储整个计算迹。</li>
   <li>非常适合证明生成的分布式和并行化。
-证明者可以运行程序，跟踪输入和输出变量以及状态变化，然后使用 CPU 或 GPU 为计算的每个步骤并行生成证明。 更好的是，证明可以方便地聚合成一个，验证者可以检查。</li>
+证明者可以运行程序，追踪输入和输出变量以及状态变化，然后使用 CPU 或 GPU 为计算的每个步骤并行生成证明。 更好的是，证明可以方便地聚合成一个，验证者可以去检查。</li>
 </ul>
 
-<p>They are well suited for the distribution and parallelization of proof generation.
-The prover can run the program, keeping track of the input and output variables and state changes, and then generate the proofs in parallel using CPU or GPU for each step of the computation. Better still, the proofs can be conveniently aggregated into a single one, which the verifier can check.</p>
+<p><a href="https://cryptography.land/2023/03/05/nova.html">增量可验证计算</a> (IVC) 提供了一种证明机器执行完整性的方法。 要使用 IVC，我们需要设计一个可以执行任何机器支持指令的通用电路。 在每一步，我们都必须调用这个电路。 这很不方便，因为证明每一步的开销都与通用电路的大小成正比，即使程序仅以低得多的开销执行其中一个受支持的指令时也是如此。 解决该缺点的一种方法是通过构造具有最小指令集的虚拟机来限制通用电路的大小。</p>
+
+<p><a href="https://eprint.iacr.org/2022/1758">SuperNova</a> 提供了一个基于虚拟机的密码证明系统（包括证明者和验证者）和设计用于在该虚拟机上运行的程序，满足以下性质：</p>
+
+<ul>
+  <li>简洁性：证明的大小和验证所述证明的时间至多为程序执行时间的多项式对数。</li>
+  <li>零知识：除了问题的正确执行之外，证明没有泄漏任何其他内容。</li>
+  <li>小开销：证明程序每一步的成本与表示该指令的电路的大小成正比。</li>
+  <li>增量证明生成：证明者可以为程序执行的每个步骤独立生成一个证明，之后在不增加证明大小的情况下将这些证明合并成一个单一的证明。</li>
+</ul>
+
+<p>SuperNova 利用折叠方案（之前<a href="https://github.com/microsoft/Nova">Nova</a> 使用的密码原语），使用<a href="https://cryptography.land/2023/03/05/nova.html">松弛承诺的 R1CS</a> 来实现非均匀 IVC。 SuperNova 是 Nova 的扩展，支持具有丰富指令集的机器（Nova 仅限于一条指令）。 以下部分中，我们将分别叙述 SuperNova 所需的不同组件以及如何实现非均匀 IVC。</p>
+
+<h2 id="对向量的承诺方案">对向量的承诺方案</h2>
+<p>一个对向量的<a href="https://www.notamonadtutorial.com/the-hunting-of-the-zk-snark/">承诺方案</a>是三个有效算法的集合：</p>
+<ul>
+  <li>参数生成 $\operatorname{Gen}\left(1^\lambda\right)=p p$ ：给定安全级别参数 $\lambda$ ，算法输出公共参数 $p p$。</li>
+  <li>承诺，$\operatorname{commit}(p p, x, r)=\mathrm{cm}$：给定公共参数、一个向量和随机性 $r$，输出承诺 $\mathrm{cm}$ 。</li>
+  <li>打开， $\operatorname{open}(p p, \mathrm{~cm}, x, r)=0,1$ ：给定承诺、向量、随机性和公共参数，算法验证给定的承诺是否对应向量 $x$。</li>
+</ul>
+
+<p>承诺方案必须满足以下性质：</p>
+<ul>
+  <li>绑定性：给定承诺 $\mathrm{cm}$，不可能找到两个 $x_1, x_2$ 使得 $\operatorname{commit}\left(p p, x_1, r\right)=\operatorname{commit} \left(p p, x_2, r\right)$。 简言之，承诺将我们绑定到原始值 $x$。</li>
+  <li>隐藏性：承诺不会泄露任何 $x$ 的信息。</li>
+</ul>
+
+<p>一些承诺方案还满足下面两个性质，例如 Pedersen 方案，在我们的场景中很有用：</p>
+
+<ul>
+  <li>加法同态性：给定 $x_1, x_2$ ，承诺是加法同态的，如果</li>
+</ul>
+
+\[\operatorname{commit}\left(p p, x_1+x_2, r_1+r_2\right)=\operatorname{commit}\left(p p, x_1, r_1\right)+\operatorname{commit}\left(p p, x_2, r_2\right)\]
+
+<ul>
+  <li>简洁性：承诺的大小远小于相应的向量（例如，$\operatorname{commit}(p p, x, r)=\mathcal{O}(\log (x))$）。</li>
+</ul>
+
+<p>SuperNova 可以用任何满足上述四个性质的承诺方案来实例化，例如 Pedersen 、KZG 或 Dory。</p>
 
 <h2 id="非均匀ivcnivc的计算模型">非均匀IVC（NIVC）的计算模型</h2>
-<p>We can think of the program as a collection of $n+1$ non-deterministic, polynomial time computable functions, $f_1, f_2, \ldots, f_n, \phi$, where each function receives $k$ input and $k$ output variables; each $f_j$ can also take non-deterministic input. The function $\phi$ can take non-deterministic input variables and output an element $j=\phi(z=(x, w))$, choosing one of the $f_i$. Each function is represented as a quadratic rank-one constraint system (R1CS), an NP-complete problem. In IVC, the prover takes as input at step $k\left(k, x_0, x\right)$ and a proof $\Pi_k$ that proves knowledge of witnesses $\left(w_0, w_1, \ldots, w_{k-1}\right)$ such that
-\(x_{j+1}=F\left(x_j, w_j\right)\)
-for all $j=0,1, \ldots, k$ we have $x=x_{k+1}$. In other words, given a proof that shows that the previous step has been computed correctly and the current state $x_k$, we get the next state $x_{k+1}$ and a proof $\Pi_{k+1}$ showing that we computed step $k$ correctly. In the NIVC setting, $\phi$ selects which function we are going to use,
-\(x_{j+1}=F_{\phi\left(x_j, w_j\right)}\left(x_j, w_j\right)\)
-At each step, SuperNova folds an $\mathrm{R} 1 \mathrm{CS}$ instance and its witness, representing the last step of the program’s execution into a running instance (it takes two $N$-sized NP instances into a single $N$-sized NP instance). The prover uses an augmented circuit containing a verifier circuit and the circuit corresponding to the function $f_j$ being executed. The verifier circuit comprises the non-interactive folding scheme and a circuit for computing $\phi$. We will represent the augmented functions as $f_j^{\prime}$</p>
 
-<p>One problem with the folding scheme is that we have multiple instructions, each having its R1CS representation. We could take the path of universal circuits, but this would make us pay a high cost for many cheap instructions. In Nova, we avoided the problem since we only had one type of instruction. To deal with multiple instructions, SuperNova works with $n$ running instances $U_i$, where $U_i(j)$ attests to all previous executions of $f_j^{\prime}$, up to step $i-1$. Therefore, checking all $U_i$ is equivalent to checking all $i-1$ steps. Each $f_j^{\prime}$ takes as input $u_i$, corresponding to step $i$, and folds it to the corresponding $U_i$ instance. We can think of it as looking at the function we want to execute and performing the instance folding with the one related to the previous executions. By doing so, we pay the cost for each instruction only when it is used, at the expense of keeping more running instances and updating accordingly.
-The verifier circuit corresponding to $f_j^{\prime}$ does the following steps:</p>
+<p>我们可以将程序视为 $n+1$ 个非确定性多项式时间可计算函数的集合，$f_1, f_2, \ldots, f_n, \phi$，其中每个函数$f_j$接收$k$个输入变量，产生 $k$个输出变量；每个 $f_j$ 也会额外有非确定性输入。 函数 $\phi$ 可以接收$k$个输入和非确定性输入，输出元素 $j=\phi(z=(x, w))$，起到选择 $f_i$ 之一的作用。 每个函数都表示为二次秩一约束系统 (R1CS)，这是一个 NP 完全问题。</p>
+
+<p>在 IVC 中，证明者第$k$步的输入为$\left(k, x_0, x\right)$以及证明见证$\left(w_0, w_1, \ldots, w_{k-1}\right)$知识的证明$\Pi_k$，使得对所有$j=0,1, \ldots, k$，（ $x=x_{k+1}$），</p>
+
+\[x_{j+1}=F\left(x_j, w_j\right)\]
+
+<p>换句话说，给定一个表明前一步计算正确的证明和当前状态 $x_k$，我们得到下一个状态 $x_{k+1}$ 和一个表明我们正确计算了步骤 $k$的证明 $\Pi_{k+1}$ 。</p>
+
+<p>在 NIVC 场景中，用$\phi$ 来选择我们要使用的函数，</p>
+
+\[x_{j+1}=F_{\phi\left(x_j, w_j\right)}\left(x_j, w_j\right)\]
+
+<p>每一步中，SuperNova 折叠一个代表程序执行的上一步的R1CS实例及其见证，将其变成一个正在运行的实例（将两个 $N$ 大小的 NP 实例变成单个 $N$ 大小的 NP 实例）。 证明者使用包含验证者电路和与正在执行的函数 $f_j$ 对应的电路的增强电路。 验证者电路包括非交互式折叠方案和用于计算 $\phi$ 的电路。 我们将增强函数表示为 $f_j^{\prime}$。</p>
+
+<p>折叠方案的一个问题是我们会有多个指令，每个指令都有其 R1CS 表示。 可以走通用电路的方式，但这会使我们为许多廉价指令也付出高昂的开销。 Nova中避开了这个问题，因为只有一种指令。 
+为处理多条指令，SuperNova 使用 $n$ 个运行实例 $U_i$，其中 $U_i(j)$ 证明 $f_j^{\prime}$ 的所有先前执行，直至第 $i-1$ 步。 
+因此，检查所有 $U_i$ 等价于检查所有 $i-1$ 步。 
+每个 $f_j^{\prime}$ ，对应于第$i$步 ，$u_i$ 作为输入，并将其折叠到相应的 $U_i$ 实例。 
+可以理解为是查看我们要执行的函数，并与之前执行的相关函数进行实例折叠。 通过这样做，我们只在每条指令被使用时才支付开销，代价是维持更多运行实例和相应更新。</p>
+
+<p>$f_j^{\prime}$对应的验证者电路做以下步骤：</p>
 <ol>
-  <li>Checks that $U_i$ and $p c_i=\phi\left(x_{i-1}, w_{i-1}\right)$ (the index of the function executed previously) are contained in the public output of the instance $u_i$ . This enforces that the previous step produces both $U_i$ and $p c_i$.</li>
-  <li>Runs the folding scheme’s verifier to fold an instance and updates the running instances, $U_{i+1}$.</li>
-  <li>Calls $\phi\left(x_i, w_i\right)=p c_{i+1}$ to obtain the index of the following function to invoke.</li>
+  <li>检查 $U_i$ 和 $p c_i=\phi\left(x_{i-1}, w_{i-1}\right)$（先前执行的函数的索引）是否包含在实例 $u_i$的公共输出中。 这确保上一步生成了 $U_i$ 和 $p c_i$。</li>
+  <li>运行折叠方案的验证者以折叠实例并更新运行实例，$U_{i+1}$。</li>
+  <li>调用$\phi\left(x_i, w_i\right)=p c_{i+1}$ 得到后面要调用的函数的索引。</li>
 </ol>
 
 <h2 id="总结">总结</h2>
-<p>IVC is a powerful cryptographic primitive which allows us to prove the integrity of computation in an incremental fashion. This strategy is well-suited for virtual machine executions and general programs with dynamic flow control. We could achieve this by using universal circuits, but at the expense of a considerable cost for each instruction, no matter how cheap it could be. Nova introduced folding schemes, allowing one to realize IVC for a single instruction. SuperNova generalizes Nova to multiple instructions by adding a selector function $\phi$, choosing the instruction to be executed at each step. To support several instructions, SuperNova needs to maintain separate bookkeeping for each function’s execution. This construction has many exciting applications since we could realize IVC without requiring expensive arbitrary circuits.</p>]]></content><author><name>Kurt Pan</name></author><category term="折叠方案" /><category term="同态承诺" /><category term="增量可验证计算" /><category term="递归零知识证明" /><summary type="html"><![CDATA[原文：Champagne SuperNova, incrementally verifiable computation 作者：Not a Monad Tutorial 译者：Kurt Pan 引言 增量证明系统提供了一些优于传统证明系统的优势： 不需要循环迭代的静态边界，更适合具有动态控制流的程序。 需要的内存开销极小，因为证明者只需要与执行一步所需空间成比例的空间，而不是存储整个计算迹。 非常适合证明生成的分布式和并行化。 证明者可以运行程序，跟踪输入和输出变量以及状态变化，然后使用 CPU 或 GPU 为计算的每个步骤并行生成证明。 更好的是，证明可以方便地聚合成一个，验证者可以检查。 They are well suited for the distribution and parallelization of proof generation. The prover can run the program, keeping track of the input and output variables and state changes, and then generate the proofs in parallel using CPU or GPU for each step of the computation. Better still, the proofs can be conveniently aggregated into a single one, which the verifier can check. 非均匀IVC（NIVC）的计算模型 We can think of the program as a collection of $n+1$ non-deterministic, polynomial time computable functions, $f_1, f_2, \ldots, f_n, \phi$, where each function receives $k$ input and $k$ output variables; each $f_j$ can also take non-deterministic input. The function $\phi$ can take non-deterministic input variables and output an element $j=\phi(z=(x, w))$, choosing one of the $f_i$. Each function is represented as a quadratic rank-one constraint system (R1CS), an NP-complete problem. In IVC, the prover takes as input at step $k\left(k, x_0, x\right)$ and a proof $\Pi_k$ that proves knowledge of witnesses $\left(w_0, w_1, \ldots, w_{k-1}\right)$ such that \(x_{j+1}=F\left(x_j, w_j\right)\) for all $j=0,1, \ldots, k$ we have $x=x_{k+1}$. In other words, given a proof that shows that the previous step has been computed correctly and the current state $x_k$, we get the next state $x_{k+1}$ and a proof $\Pi_{k+1}$ showing that we computed step $k$ correctly. In the NIVC setting, $\phi$ selects which function we are going to use, \(x_{j+1}=F_{\phi\left(x_j, w_j\right)}\left(x_j, w_j\right)\) At each step, SuperNova folds an $\mathrm{R} 1 \mathrm{CS}$ instance and its witness, representing the last step of the program’s execution into a running instance (it takes two $N$-sized NP instances into a single $N$-sized NP instance). The prover uses an augmented circuit containing a verifier circuit and the circuit corresponding to the function $f_j$ being executed. The verifier circuit comprises the non-interactive folding scheme and a circuit for computing $\phi$. We will represent the augmented functions as $f_j^{\prime}$ One problem with the folding scheme is that we have multiple instructions, each having its R1CS representation. We could take the path of universal circuits, but this would make us pay a high cost for many cheap instructions. In Nova, we avoided the problem since we only had one type of instruction. To deal with multiple instructions, SuperNova works with $n$ running instances $U_i$, where $U_i(j)$ attests to all previous executions of $f_j^{\prime}$, up to step $i-1$. Therefore, checking all $U_i$ is equivalent to checking all $i-1$ steps. Each $f_j^{\prime}$ takes as input $u_i$, corresponding to step $i$, and folds it to the corresponding $U_i$ instance. We can think of it as looking at the function we want to execute and performing the instance folding with the one related to the previous executions. By doing so, we pay the cost for each instruction only when it is used, at the expense of keeping more running instances and updating accordingly. The verifier circuit corresponding to $f_j^{\prime}$ does the following steps: Checks that $U_i$ and $p c_i=\phi\left(x_{i-1}, w_{i-1}\right)$ (the index of the function executed previously) are contained in the public output of the instance $u_i$ . This enforces that the previous step produces both $U_i$ and $p c_i$. Runs the folding scheme’s verifier to fold an instance and updates the running instances, $U_{i+1}$. Calls $\phi\left(x_i, w_i\right)=p c_{i+1}$ to obtain the index of the following function to invoke. 总结 IVC is a powerful cryptographic primitive which allows us to prove the integrity of computation in an incremental fashion. This strategy is well-suited for virtual machine executions and general programs with dynamic flow control. We could achieve this by using universal circuits, but at the expense of a considerable cost for each instruction, no matter how cheap it could be. Nova introduced folding schemes, allowing one to realize IVC for a single instruction. SuperNova generalizes Nova to multiple instructions by adding a selector function $\phi$, choosing the instruction to be executed at each step. To support several instructions, SuperNova needs to maintain separate bookkeeping for each function’s execution. This construction has many exciting applications since we could realize IVC without requiring expensive arbitrary circuits.]]></summary></entry><entry><title type="html">Nova</title><link href="http://localhost:4000/2023/03/05/nova.html" rel="alternate" type="text/html" title="Nova" /><published>2023-03-05T08:00:00+08:00</published><updated>2023-03-05T08:00:00+08:00</updated><id>http://localhost:4000/2023/03/05/nova</id><content type="html" xml:base="http://localhost:4000/2023/03/05/nova.html"><![CDATA[<blockquote>
+<p>IVC 是一种强大的密码原语，它使我们能够以增量方式证明计算的完整性。 该策略非常适合虚拟机执行和具有动态控制流的通用程序。
+ 当然可以通过使用通用（universal）电路来实现这一点，但代价是每条指令（无论多快）都会有相当大的开销。
+Nova 引入了折叠方案，允许为单个指令实现 IVC。 SuperNova 通过添加选择每一步要执行指令的选择函数$\phi$将 Nova 扩展为多条指令。
+ 为了支持多条指令，SuperNova需要为每个函数的执行维护单独的记录。 该构造有许多令人兴奋的应用，因为我们可以在不需要昂贵的任意电路的情况下实现 IVC。</p>]]></content><author><name>Kurt Pan</name></author><category term="折叠方案" /><category term="同态承诺" /><category term="增量可验证计算" /><category term="递归零知识证明" /><summary type="html"><![CDATA[原文：Champagne SuperNova, incrementally verifiable computation 作者：Not a Monad Tutorial 译者：Kurt Pan 引言 增量证明系统相比于传统证明系统具有如下优势： 不需要循环迭代的静态边界，更适合具有动态控制流的程序。 需要的内存开销极小，因为证明者只需要与执行一步所需空间成比例的空间，而不是存储整个计算迹。 非常适合证明生成的分布式和并行化。 证明者可以运行程序，追踪输入和输出变量以及状态变化，然后使用 CPU 或 GPU 为计算的每个步骤并行生成证明。 更好的是，证明可以方便地聚合成一个，验证者可以去检查。 增量可验证计算 (IVC) 提供了一种证明机器执行完整性的方法。 要使用 IVC，我们需要设计一个可以执行任何机器支持指令的通用电路。 在每一步，我们都必须调用这个电路。 这很不方便，因为证明每一步的开销都与通用电路的大小成正比，即使程序仅以低得多的开销执行其中一个受支持的指令时也是如此。 解决该缺点的一种方法是通过构造具有最小指令集的虚拟机来限制通用电路的大小。 SuperNova 提供了一个基于虚拟机的密码证明系统（包括证明者和验证者）和设计用于在该虚拟机上运行的程序，满足以下性质： 简洁性：证明的大小和验证所述证明的时间至多为程序执行时间的多项式对数。 零知识：除了问题的正确执行之外，证明没有泄漏任何其他内容。 小开销：证明程序每一步的成本与表示该指令的电路的大小成正比。 增量证明生成：证明者可以为程序执行的每个步骤独立生成一个证明，之后在不增加证明大小的情况下将这些证明合并成一个单一的证明。 SuperNova 利用折叠方案（之前Nova 使用的密码原语），使用松弛承诺的 R1CS 来实现非均匀 IVC。 SuperNova 是 Nova 的扩展，支持具有丰富指令集的机器（Nova 仅限于一条指令）。 以下部分中，我们将分别叙述 SuperNova 所需的不同组件以及如何实现非均匀 IVC。 对向量的承诺方案 一个对向量的承诺方案是三个有效算法的集合： 参数生成 $\operatorname{Gen}\left(1^\lambda\right)=p p$ ：给定安全级别参数 $\lambda$ ，算法输出公共参数 $p p$。 承诺，$\operatorname{commit}(p p, x, r)=\mathrm{cm}$：给定公共参数、一个向量和随机性 $r$，输出承诺 $\mathrm{cm}$ 。 打开， $\operatorname{open}(p p, \mathrm{~cm}, x, r)=0,1$ ：给定承诺、向量、随机性和公共参数，算法验证给定的承诺是否对应向量 $x$。 承诺方案必须满足以下性质： 绑定性：给定承诺 $\mathrm{cm}$，不可能找到两个 $x_1, x_2$ 使得 $\operatorname{commit}\left(p p, x_1, r\right)=\operatorname{commit} \left(p p, x_2, r\right)$。 简言之，承诺将我们绑定到原始值 $x$。 隐藏性：承诺不会泄露任何 $x$ 的信息。 一些承诺方案还满足下面两个性质，例如 Pedersen 方案，在我们的场景中很有用： 加法同态性：给定 $x_1, x_2$ ，承诺是加法同态的，如果 \[\operatorname{commit}\left(p p, x_1+x_2, r_1+r_2\right)=\operatorname{commit}\left(p p, x_1, r_1\right)+\operatorname{commit}\left(p p, x_2, r_2\right)\] 简洁性：承诺的大小远小于相应的向量（例如，$\operatorname{commit}(p p, x, r)=\mathcal{O}(\log (x))$）。 SuperNova 可以用任何满足上述四个性质的承诺方案来实例化，例如 Pedersen 、KZG 或 Dory。 非均匀IVC（NIVC）的计算模型 我们可以将程序视为 $n+1$ 个非确定性多项式时间可计算函数的集合，$f_1, f_2, \ldots, f_n, \phi$，其中每个函数$f_j$接收$k$个输入变量，产生 $k$个输出变量；每个 $f_j$ 也会额外有非确定性输入。 函数 $\phi$ 可以接收$k$个输入和非确定性输入，输出元素 $j=\phi(z=(x, w))$，起到选择 $f_i$ 之一的作用。 每个函数都表示为二次秩一约束系统 (R1CS)，这是一个 NP 完全问题。 在 IVC 中，证明者第$k$步的输入为$\left(k, x_0, x\right)$以及证明见证$\left(w_0, w_1, \ldots, w_{k-1}\right)$知识的证明$\Pi_k$，使得对所有$j=0,1, \ldots, k$，（ $x=x_{k+1}$）， \[x_{j+1}=F\left(x_j, w_j\right)\] 换句话说，给定一个表明前一步计算正确的证明和当前状态 $x_k$，我们得到下一个状态 $x_{k+1}$ 和一个表明我们正确计算了步骤 $k$的证明 $\Pi_{k+1}$ 。 在 NIVC 场景中，用$\phi$ 来选择我们要使用的函数， \[x_{j+1}=F_{\phi\left(x_j, w_j\right)}\left(x_j, w_j\right)\] 每一步中，SuperNova 折叠一个代表程序执行的上一步的R1CS实例及其见证，将其变成一个正在运行的实例（将两个 $N$ 大小的 NP 实例变成单个 $N$ 大小的 NP 实例）。 证明者使用包含验证者电路和与正在执行的函数 $f_j$ 对应的电路的增强电路。 验证者电路包括非交互式折叠方案和用于计算 $\phi$ 的电路。 我们将增强函数表示为 $f_j^{\prime}$。 折叠方案的一个问题是我们会有多个指令，每个指令都有其 R1CS 表示。 可以走通用电路的方式，但这会使我们为许多廉价指令也付出高昂的开销。 Nova中避开了这个问题，因为只有一种指令。 为处理多条指令，SuperNova 使用 $n$ 个运行实例 $U_i$，其中 $U_i(j)$ 证明 $f_j^{\prime}$ 的所有先前执行，直至第 $i-1$ 步。 因此，检查所有 $U_i$ 等价于检查所有 $i-1$ 步。 每个 $f_j^{\prime}$ ，对应于第$i$步 ，$u_i$ 作为输入，并将其折叠到相应的 $U_i$ 实例。 可以理解为是查看我们要执行的函数，并与之前执行的相关函数进行实例折叠。 通过这样做，我们只在每条指令被使用时才支付开销，代价是维持更多运行实例和相应更新。 $f_j^{\prime}$对应的验证者电路做以下步骤： 检查 $U_i$ 和 $p c_i=\phi\left(x_{i-1}, w_{i-1}\right)$（先前执行的函数的索引）是否包含在实例 $u_i$的公共输出中。 这确保上一步生成了 $U_i$ 和 $p c_i$。 运行折叠方案的验证者以折叠实例并更新运行实例，$U_{i+1}$。 调用$\phi\left(x_i, w_i\right)=p c_{i+1}$ 得到后面要调用的函数的索引。 总结 IVC 是一种强大的密码原语，它使我们能够以增量方式证明计算的完整性。 该策略非常适合虚拟机执行和具有动态控制流的通用程序。 当然可以通过使用通用（universal）电路来实现这一点，但代价是每条指令（无论多快）都会有相当大的开销。 Nova 引入了折叠方案，允许为单个指令实现 IVC。 SuperNova 通过添加选择每一步要执行指令的选择函数$\phi$将 Nova 扩展为多条指令。 为了支持多条指令，SuperNova需要为每个函数的执行维护单独的记录。 该构造有许多令人兴奋的应用，因为我们可以在不需要昂贵的任意电路的情况下实现 IVC。]]></summary></entry><entry><title type="html">Nova</title><link href="http://localhost:4000/2023/03/05/nova.html" rel="alternate" type="text/html" title="Nova" /><published>2023-03-05T08:00:00+08:00</published><updated>2023-03-05T08:00:00+08:00</updated><id>http://localhost:4000/2023/03/05/nova</id><content type="html" xml:base="http://localhost:4000/2023/03/05/nova.html"><![CDATA[<blockquote>
   <ul>
     <li>原文：<a href="https://www.notamonadtutorial.com/incrementally-verifiable-computation-nova/">Incrementally verifiable computation: NOVA</a></li>
     <li>作者：Not a Monad Tutorial</li>
