@@ -2440,3 +2440,8 @@
 
 [^vS13]: **CryptoNote v2.0**, by Nicolas van Saberhagen, 2013, [[URL]](https://web.archive.org/web/20201028121818/https://cryptonote.org/whitepaper.pdf)
 
+[^KST22]: Kothapalli, Abhiram, Srinath Setty, and Ioanna Tzialla. **Nova: Recursive zero-knowledge arguments from folding schemes.** Annual International Cryptology Conference. Springer, Cham, 2022. [[URL]](https://eprint.iacr.org/2021/370)
+
+[^GWC19]: Gabizon, Ariel, Zachary J. Williamson, and Oana Ciobotaru. **Plonk: Permutations over Lagrange-bases for Oecumenical Noninteractive arguments of Knowledge**. Cryptology ePrint Archive, Paper 2019/953, 2019. [[URL]](https://eprint.iacr.org/2019/953)
+
+[^BCLMS20]: Benedikt Bunz, Alessandro Chiesa, William Lin, Pratyush Mishra, and Nicholas Spooner. **Proof-carrying data without succinct arguments.** Cryptology ePrint Archive, Paper 2020/1618, 2020. [[URL]](https://eprint.iacr.org/2020/1618)
