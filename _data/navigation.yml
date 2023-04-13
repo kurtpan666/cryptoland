@@ -79,6 +79,8 @@ cryptoland:
 
   - title: 证明系统
     children:
+      - title: 算术化
+        url: /2023/04/04/arithmetization.html
       - title: Nova
         url: /2023/03/05/nova.html
       - title: SuperNova
