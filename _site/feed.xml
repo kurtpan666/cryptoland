@@ -1,214 +1,453 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-03-28T23:30:06+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">Sangria</title><link href="http://localhost:4000/2023/03/07/sangria.html" rel="alternate" type="text/html" title="Sangria" /><published>2023-03-07T08:00:00+08:00</published><updated>2023-03-07T08:00:00+08:00</updated><id>http://localhost:4000/2023/03/07/sangria</id><content type="html" xml:base="http://localhost:4000/2023/03/07/sangria.html"><![CDATA[<blockquote>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-04-13T14:06:11+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">ZK-SNARKs中的算术化</title><link href="http://localhost:4000/2023/04/04/arithmetization.html" rel="alternate" type="text/html" title="ZK-SNARKs中的算术化" /><published>2023-04-04T08:00:00+08:00</published><updated>2023-04-04T08:00:00+08:00</updated><id>http://localhost:4000/2023/04/04/arithmetization</id><content type="html" xml:base="http://localhost:4000/2023/04/04/arithmetization.html"><![CDATA[<blockquote>
   <ul>
-    <li>原文：<a href="https://geometry.xyz/notebook/sangria-a-folding-scheme-for-plonk">Sangria: a Folding Scheme for PLONK
-</a></li>
-    <li>作者：Nicolas Mohnblatt</li>
+    <li>原文：<a href="https://www.notamonadtutorial.com/arithmetization-schemes-for-zk-snarks/">Arithmetization schemes for ZK-SNARKs</a></li>
+    <li>作者：Not a Monad Tutorial</li>
     <li>译者：Kurt Pan</li>
   </ul>
 </blockquote>
 
-<p class="info">如 Nova <sup id="fnref:KST22" role="doc-noteref"><a href="#fn:KST22" class="footnote" rel="footnote">1</a></sup> 所示，可以使用折叠方案和 zkSNARK 实现增量可验证计算 (IVC)。 
-在本文中，我们提出了对PLONK算术化 <sup id="fnref:GWC19" role="doc-noteref"><a href="#fn:GWC19" class="footnote" rel="footnote">2</a></sup> 变体的折叠方案。 
-之后，我们扩展松弛PLONK 算术化，以接受2次自定义门和具有更高门扇入扇出数的电路。 最后，概述了未来工作的路径，包括折叠更高次的门、支持查找门和为松弛PLONK算术化设计 IOP。</p>
+<!--more-->
 
-<blockquote>
-  <p>本文是 <a href="https://github.com/geometryresearch/technical_notes/blob/main/sangria_folding_plonk.pdf">Sangria 技术论文</a>的浓缩版。 请参阅完整版以获取证明和扩展讨论。 我们假设读者熟悉 IVC 和 Nova。 建议初步查看和阅读：<a href="https://youtu.be/SwonTtOQzAk">Justin Drake 的 ZK Whiteboard Session</a> 和这篇 <a href="https://cryptography.land/2023/03/05/nova">Lambdaclass 博客文章</a>。</p>
-</blockquote>
+<p>零知识证明（ZKP）正在因其在代理计算给不受信任的服务器，解决去中心化账本的可扩展性问题等方面的诸多应用而逐渐变得流行起来。ZKP 让我们可以在不泄露敏感数据的情况下证明给定计算的有效性。其主要优势是证明简短（简洁），且验证时间远比原始计算重新执行要快得多。可以在去中心化账本中利用这一点，这里每个节点都必须检查交易的正确性，性能最弱的设备会成为瓶颈。如果我们现在可以通过检查一个小证明（只需几毫秒）来验证交易的有效性，那么可扩展性问题就消失了。我们还可以使用递归证明组合、<a href="https://www.entropy1729.com/proof-aggregation-schemes-snarkpack-and-aplonk/">证明聚合</a>或<a href="https://cryptography.land/2023/03/05/nova.html">折叠方案</a>，来生成表明我们执行了数千笔交易或操作的证明。</p>
+
+<p>为了证明计算的有效性且避免泄露敏感信息, 零知识证明会依赖多项式的性质。多项式是形式为 $a_0+a_1 x+a_2 x^2+a_3 x^3+ \ldots a_n x^n$ 的表达式, 其中系数 $a_k$ 是某个<a href="https://www.notamonadtutorial.com/math-survival-kit-for-developers/">环或域</a>（例如， 整数、实数或有限域, 如 $\mathbb{Z} / 7 \mathbb{Z}$，模7的整数）中的元素。</p>
+
+<p class="info">为了能够使用多项式，必须通过一个称为算术化的过程来将计算表示为多项式。
+算术化将计算语句归约为关于有界次多项式的代数语句。</p>
+
+<p>算术化可以分为两类:</p>
+<ol>
+  <li>电路计算。大多数SNARK都使用这种方法。</li>
+  <li>机器计算。STARK采用这种方法。</li>
+</ol>
+
+<p>电路计算更适合非结构化计算，且相对更容易支持可组合性。 另一方面，机器计算更适合均匀计算，支持无边界计算。</p>
+
+<p>有些操作可以很容易地转换为算术操作，要么因为它们是有限域上的代数操作，或者因为可以只通过一些细微改变就将它们转换为算术操作。 这导致人们对什么是昂贵或简单的计算的认知发生了转变。 例如，流密码是高效的加密方案，在明文（要加密的消息）和密钥流（伪随机比特串）之间执行 XOR 操作，处理器可以非常快速地计算。 然而，就它们的算术化和需要描述它们的方程的数量（即约束的数量）而言，它们对于 SNARK 来说是昂贵的操作。 SNARK 的高开销操作的例子包括按位操作（AND、XOR、OR）、边界检查和比较（因为这些需要将变量分解为比特）。</p>
+
+<p>算术化显著增加了计算时间的开销。 使用SNARK友好操作的计算时间会增加近两个数量级，而对于非友好操作则要增加更多。</p>
+
+<p>最近，已经提出了许多不同的优化来减少开销，例如：</p>
+
+<ul>
+  <li>查找表。</li>
+  <li>SNARK 友好的密码学原语（例如 <a href="https://eprint.iacr.org/2020/1143.pdf">Rescue</a>、<a href="https://eprint.iacr.org/2019/1270.pdf">SAVER</a> 或 <a href="https://eprint.iacr.org/2019/458">Poseidon</a>）。</li>
+  <li>并发证明生成。</li>
+  <li>硬件加速（例如使用 GPU 或 FPGA）。</li>
+</ul>
+
+<p>一般来说，除初级程序外，不要手动进行算术化。 此外，使用朴素算术化会导致大量开销。 为了解决这个问题，已经开发出了接受高级编程语言的专用编译器，以及零知识虚拟机，例如 CAIRO。 下面我们将介绍最流行的方案，R1CS、AIR 和 plonkish 算术化。</p>
+
+<h2 id="r1cs">R1CS</h2>
+
+<p>算术电路可以表示为（二次）秩一约束系统（R1CS）。这些方程组中每个方程中的每个变量至多为二次，形式为</p>
+
+\[\left(\sum_k A_{i k} z_k\right)\left(\sum_k B_{i k} z_k\right)-\left(\sum_k C_{i k} z_k\right)=0\]
+
+<p>其中 $A_{i k}, B_{i k}, C_{i k}$ 是有限域 $\mathbb{F}$ 中的元素，其中许多项为零。我们可以用这种方式表示任何复杂的计算。例如，如果我们想计算 $w=x^4$，我们可以表示为</p>
+
+<p>\(\begin{aligned}
+&amp; x \times x=w_1 \\
+&amp; w_1 \times w_1=w
+\end{aligned}\)
+我们引入了一个额外的变量 $w_1$，需要制定是公开变量还是私有变量。重要的是描述给定计算的 R1CS 是不唯一的。例如，我们可以将先前的计算表示为</p>
+
+<p>\(\begin{aligned}
+&amp; x \times x=w_1 \\
+&amp; x \times w_1=w_2 \\
+&amp; x \times w_2=w
+\end{aligned}\)
+这个系统等价于前一个系统，但就会有一个额外的约束。</p>
+
+<p>要实现 R1CS，程序有小组件，允许模块化地构建算术电路。例如，如果我们想使用布尔变量，我们可以有一个小组件来实现约束，使得变量只能取值0或1。如果我们将变量称为 $b$，那么</p>
+
+\[b(1-b)=0\]
+
+<p>如果我们想在 $a$ 和 $b$ 之间进行 OR 操作，那么布尔小组件也会实现</p>
+
+\[a(1-a)=0\]
+
+<p>以及 OR 小组件添加了</p>
+
+\[a+b-a b=c\]
+
+<p><a href="https://github.com/arkworks-rs/snark/tree/master/relations/src">Arkworks</a> 库包含了对基本数据类型和操作的小组件。在 <a href="https://zips.z.cash/protocol/protocol.pdf">Zcash 协议规范</a>中也可以找到操作符和范围检查的常用表达式。</p>
+
+<h2 id="代数中间表示air">代数中间表示（AIR）</h2>
+
+<p>代数中间表示（AIR）是 StarkWare 在其虚拟机 CAIRO（CPU AIR）中使用的算术化过程。AIR 包含以下三个元素：</p>
+
+<ol>
+  <li>计算的执行迹。表示为执行迹矩阵 $T$，其行表示在给定时间点的计算状态，列对应于一个代数寄存器在所有计算步骤中的状态变化。</li>
+  <li>转换约束约束了迹矩阵 $T$ 两行或多行之间的关系。</li>
+  <li>边界约束确保了执行中某些单元格和特定常量之间的相等关系。</li>
+</ol>
+
+<p>算术化分为两个阶段：</p>
+
+<ul>
+  <li>生成执行迹和低次多项式约束。</li>
+  <li>将这二者转换为一个单变量多项式。</li>
+</ul>
+
+<p>构造多项式约束集合使得：当且仅当执行迹有效（即迹表示一个有效计算）时，所有约束都能得到验证。这些约束是低次多项式，但不一定限于（比如R1CS情况下的）2次多项式。</p>
+
+<p>为了理解 AIR 的工作原理，我们看一些例子。假设我们想要求出给定大小为 $n$ 的向量 $a = \left(a_1, a_2, a_3, \ldots, a_n\right)$ 中所有元素的和。我们可以引入一个变量 $t$，从 0 开始，在每一步加上 $a$ 的一个元素的值。迹矩阵包含两列；第一列是 $a$ 的元素，第二列是 $t$ 的部分和。</p>
+
+\[\begin{array}{|l|l|l|}
+\hline \text { ROW } &amp; a &amp; t \\
+\hline 1 &amp; a_1 &amp; 0 \\
+\hline 2 &amp; a_2 &amp; a_1 \\
+\hline 3 &amp; a_3 &amp; a_1+a_2 \\
+\hline 4 &amp; a_4 &amp; a_1+a_2+a_3 \\
+\hline \vdots &amp; \vdots &amp; \vdots \\
+\hline \mathrm{n} &amp; a_n &amp; \sum_k^{n-1} a_k \\
+\hline \mathrm{n}+1 &amp; \sum_k a_k &amp; \sum_k a_k \\
+\hline
+\end{array}\]
+
+<p>下面的多项式约束可以囊括计算的正确性：
+\(\begin{aligned}
+&amp; t_1=0 \\
+&amp; t_{j+1}-t_j-a_j=0 \text { for } j=1,2, \ldots n \\
+&amp; a_{n+1}-t_{n+1}=0
+\end{aligned}\)</p>
+
+<p>这种情况的优势在于多项式方程不受次数小于等于 2 的约束。乘法逆元 $x^{-1}$，满足 $x \times x^{-1}=1$，可以用两种等价形式表示：</p>
+
+\[\begin{aligned}
+&amp; x^{p-2}=y \\
+&amp; x \times y-1=0
+\end{aligned}\]
+
+<p>第一个表达式使用了费马小定理，涉及到次数为 $p-2$ 的门，第二个则为 2 次。</p>
+
+<p>STARKs 中使用的 AIR 过程遵循以下步骤：</p>
+
+<ol>
+  <li>获取执行迹。</li>
+  <li>进行低次扩展。</li>
+  <li>求解约束。</li>
+  <li>将约束组合成组合多项式。</li>
+</ol>
+
+<p>低次扩展操作如下：</p>
+
+<ol>
+  <li>将每个寄存器（执行迹矩阵的每一列）视为某个多项式 $f$ 的求值。</li>
+  <li>在迹的定义域上插值 $f$ 以找到其系数。</li>
+  <li>在更大的定义域上求值 $f$。</li>
+</ol>
+
+<p>解决问题的最简单方法是使用数论变换（快速傅里叶变换的有限域版本）。我们需要选择一个有限域，使其包含 $\mathrm{n}$ 次单位根 $w_k$，使得 $w_k^n=1$，且 $n$ 是大于行数的 $2$ 的幂次（$n=2^m$）。要获得所有 n 次根，我们可以取生成元 $\omega$ 的幂，$\omega^0=1, \omega=w_1, \omega^2=w_2, \ldots$ 等等。要进行低次扩展，可以通过添加 $2n$ 次单位根来增加定义域，并使用之前的求值（或者 $4\mathrm{n}$ 次单位根，这会导致4倍膨胀）。</p>
+
+<p>要求值约束，需要：</p>
+
+<ol>
+  <li>定义行之间的代数关系。</li>
+  <li>将这些关系重新解释为在满足条件的点处具有根的多项式。</li>
+  <li>从约束多项式中除掉根，将其转换为有理约束。</li>
+</ol>
+
+<p>例如，如果我们在行之间有一些关系，如 $r_{k+2}=r_{k+1}^2+2 r_k$
+我们可以将其解释为某个多项式 $f$，并将每个步骤与 $x_k=\omega^k$ 关联，于是</p>
+
+<p>\(f\left(x \omega^2\right)=\left(f(x \omega)^2+2 f(x)\right)\)
+多项式</p>
+
+\[p(x)=f\left(x \omega^2\right)-\left(f(x \omega)^2+2 f(x)\right)\]
+
+<p>在关系 $f$ 成立的点 $x$ 处有根。</p>
+
+<p>然后可以将其除以</p>
+
+\[d(x)=\prod_k\left(x-\omega_k\right)\]
+
+<p>将根剔除，其中乘积中每项仅在约束成立的 $k$ 值上进行。我们得到了所需的多项式，</p>
+
+\[g(x)=\frac{p(x)}{d(x)}\]
+
+<p>以下等式给出了一个实用的结果，</p>
+
+\[\prod_{k=0}^{n-1}\left(x-\omega^k\right)=x^n-1\]
+
+<p>因此，如果我们知道约束在大多数 $\omega^\kappa$ 上成立，那么可以使用该等式高效地计算出 $d(x)$。例如，如果 $n=256$，并且对除了 $k=128,194$ 外的所有行都成立，那么有</p>
+
+\[d(x)=\frac{x^n-1}{\left(x-\omega^{128}\right)\left(x-\omega^{194}\right)}\]
+
+<p>对于之前的关系</p>
+
+\[r_{k+2}=r_{k+1}^2+2 r_k\]
+
+<p>设 $r_1=1, r_2=5$，我们想要计算到 $r=1000$。我们将使用 $n=1024$，因为这是大于 1000 的最小的 2 的幂。约束除了对从 3 到 1000 的所有点有效外，我们还有两个初始值的约束：</p>
+
+\[\begin{aligned}
+&amp; f\left(\omega^0\right)=1=f(1) \\
+&amp; f(\omega)=5
+\end{aligned}\]
+
+<p>因此，我们得到了一些额外的多项式（如果条件确实成立）：
+\(p_1(x)=\frac{f(x)-1}{x-1}\)</p>
+
+\[p_2(x)=\frac{f(x)-5}{x-\omega}\]
+
+\[p_3(x)=\frac{f\left(x \omega^2\right)-\left(f(x \omega)^2+2 f(x)\right)}{d_3(x)}\]
+
+<p>其中</p>
+
+\[d_3(x)=\frac{x^{1024}-1}{(x-1)(x-\omega) \prod_{k=1001}^{1023}\left(x-\omega^k\right)}\]
+
+<p>最后，我们可以通过对 $p_1, p_2, p_3$ 取一个随机线性组合来获得组合多项式：</p>
+
+\[P(x)=\alpha_1 p_1+\alpha_2 p_2+\alpha_3 p_3\]
+
+<h2 id="plonkish-算术化">Plonkish 算术化</h2>
+
+<p>Plonk 使用的算术化被称为带预处理的随机化代数中间表示（简称 RAP）。TurboPlonk 和 UltraPlonk 是 RAP 的受限情况。和之前一样，我们的起点是执行迹矩阵 $T$，包含 $n$ 行和 $w$ 列。</p>
+
+<p>Plonk 的约束系统（考虑扇入2的门）写为</p>
+
+\[q_L x_a+q_R x_b+q_O x_C+q_M x_a x_b+q_C=0\]
+
+<p>这可以表示在R1CS中包括的操作，且可以实现自定义门。Plonk 的原始算术化方案包括将计算迹编码为多项式，必须检查连线的正确性，包括多项式是否正确地编码输入，每个门是否正确地求值，以及最后一个门的输出。</p>
+
+<p>预处理AIR（PAIR）通过添加新的列 $c_1, c_2, \ldots c_m$ 来扩展执行迹，这样的新列将参与约束。这些变量可以让我们改变迹矩阵中不同行之间的关系。例如，我们可以在偶数行和奇数行之间交替进行不同的操作。比如我们可能想要以下内容：</p>
+
+<p>\(\begin{aligned}
+&amp; x_{2 n}=x_{2 n-1}^2 \\
+&amp; x_{2 n+1}=2 \times x_{2 n}
+\end{aligned}\)
+可以通过执行以下操作来编码这种关系：</p>
+
+\[c_1\left(x_n-x_{n-1}^2\right)+\left(1-c_1\right)\left(x_n-2 x_{n-1}\right)\]
+
+<p>其中 $c_1=1$ 在偶数行，$c_1=0$ 在奇数行。因为我们可以用它们来选择要执行的操作，所以它们被称为选择子。我们可以使用更多的选择子来描述复杂的操作，例如椭圆曲线加法。</p>
+
+<p>我们可以使用大连乘检验来检查两个向量 $a, b$ 是否是彼此的置换。给定有限域 $\mathbb{F}$ 中的一个随机数 $\gamma$，以下等式应成立：</p>
+
+\[\prod\left(a_i+\gamma\right)=\prod\left(b_i+\gamma\right)\]
+
+<p>根据 Schartz-Zippel 引理，我们知道两个多项式在随机采样值处相等的概率小于 $(1-d) / | \mathbb{F} |$，其中 $d$ 是多项式的次数，$|\mathbb{F}|$ 是有限域元素的数量。</p>
+
+<p>为了检查这个操作是否被正确执行，我们可以引入一个额外的变量 $v$，使得</p>
+
+\[\begin{aligned}
+&amp; v_1=1 \\
+&amp; v_k=v_{k-1} \times\left(a_{k-1}+\gamma\right) /\left(b_{k-1}+\gamma\right) \text { for } k=2, n+1
+\end{aligned}\]
+
+<p>如果最后一个值 $v_{n+1}$ 等于1，那么我们就知道，以非常高的概率，列 $a, b$ 是彼此的置换。</p>
+
+<p>Plonk 可以包括查找论证。这种论证可帮助我们通过查找具有预先计算的有效 $(a, b, c)$ 的表，来检查两个变量 $a, b$ 之间的给定操作产生的输出 $c$ 是否正确。
+为此，我们需要引入一个表 $t$，其中的行给出所有可能的输入/输出组合。例如，我们可以取 $a, b$ 是8比特字符串，并提供异或操作的结果，$c=a \oplus b$。这给出了总共 $2^{16}$ 种组合。为了检查结果是否正确，我们可以使用一个随机变量 $\beta$，并计算 $f_k=a_k+\beta b_k+\beta^2 c_k$ 和 $g_k=t_{k 1}+\beta t_{k 2}+\beta^2 t_{k 3}$。其中 $t_{k i}$ 是表中的元素。我们将在后续文章中介绍这类论证。</p>
+
+<h2 id="总结">总结</h2>
+
+<p>在生成可验证计算的zk-SNARKs的过程中，一个关键步骤是将给定的计算机程序转换为多项式。这个过程被称为算术化。我们有一些高效的方案来实现算术化，如 R1CS、AIR 和 Plonkish 算术化。在R1CS中，我们需要小组件来实现数据类型（如布尔类型、u8 和 i64 变量）及其相关操作。而对于 AIR 和 Plonkish，我们需要获取程序的执行迹，建立行之间的关系并插值多项式。两种方法都需要仔细实现，因为朴素的方法可能导致更多的约束和显著的开销。幸运的是，新的 SNARK 友好原语、查找论证、自定义门和硬件加速（如使用 GPU 和 FPGA）的发展可以降低算术复杂性或提高计算速度，使得证明和验证时间更短，为许多新颖和激动人心的现实世界中应用敞开了大门。</p>]]></content><author><name>Kurt Pan</name></author><category term="zk-SNARKs" /><category term="算术化" /><summary type="html"><![CDATA[原文：Arithmetization schemes for ZK-SNARKs 作者：Not a Monad Tutorial 译者：Kurt Pan]]></summary></entry><entry><title type="html">Sangria</title><link href="http://localhost:4000/2023/03/07/sangria.html" rel="alternate" type="text/html" title="Sangria" /><published>2023-03-07T08:00:00+08:00</published><updated>2023-03-07T08:00:00+08:00</updated><id>http://localhost:4000/2023/03/07/sangria</id><content type="html" xml:base="http://localhost:4000/2023/03/07/sangria.html"><![CDATA[> - 原文：[Sangria: a Folding Scheme for PLONK
+](https://geometry.xyz/notebook/sangria-a-folding-scheme-for-plonk)
+> - 作者：Nicolas Mohnblatt
+> - 译者：Kurt Pan
+
+{: .info}
+如 Nova [^KST22] 所示，可以使用折叠方案和 zkSNARK 实现增量可验证计算 (IVC)。 
+在本文中，我们提出了对PLONK算术化 [^GWC19] 变体的折叠方案。 
+之后，我们扩展松弛PLONK 算术化，以接受2次自定义门和具有更高门扇入扇出数的电路。 最后，概述了未来工作的路径，包括折叠更高次的门、支持查找门和为松弛PLONK算术化设计 IOP。
+
+> 本文是 [Sangria 技术论文](https://github.com/geometryresearch/technical_notes/blob/main/sangria_folding_plonk.pdf)的浓缩版。 请参阅完整版以获取证明和扩展讨论。 我们假设读者熟悉 IVC 和 Nova。 建议初步查看和阅读：[Justin Drake 的 ZK Whiteboard Session](https://youtu.be/SwonTtOQzAk) 和这篇 [Lambdaclass 博客文章](https://cryptography.land/2023/03/05/nova)。
 
 <!--more-->
 
-<h2 id="预备知识">预备知识</h2>
-<h3 id="plonk算术化">PLONK算术化</h3>
-<p>在 PLONK 中，计算被表示为一个矩阵 $\mathbf{M}$，具有三列 $\mathbf{a}、\mathbf{b}、\mathbf{c}$ 和 $n+s+1$ 行。 $n$ 是公共输入的数量，$s$ 是门的数量，额外的一行检查最终结果是否为 1（即电路是否满足）。</p>
+## 预备知识
+### PLONK算术化
+在 PLONK 中，计算被表示为一个矩阵 $\mathbf{M}$，具有三列 $\mathbf{a}、\mathbf{b}、\mathbf{c}$ 和 $n+s+1$ 行。 $n$ 是公共输入的数量，$s$ 是门的数量，额外的一行检查最终结果是否为 1（即电路是否满足）。
 
-<p><img src="https://i.328888.xyz/2023/03/28/iWkbtE.png" alt="iWkbtE.png" /></p>
+![iWkbtE.png](https://i.328888.xyz/2023/03/28/iWkbtE.png)
 
-<p>第 $i$ 行的值 – $\mathbf{a}_i, \mathbf{b}_i, \mathbf{c}_i$ – 
+第 $i$ 行的值 -- $\mathbf{a}_i, \mathbf{b}_i, \mathbf{c}_i$ -- 
 分别对应第 $i$ 个门的左输入、右输入和输出。
-第$i$个门定义为：\(\left(\mathbf{q}_{\mathbf{L}}\right)_i,\left(\mathbf{q}_{\mathbf{R}}\right)_i,\left(\mathbf{q}_{\mathbf{O}}\right)_i,\left(\mathbf{q}_{\mathbf{M}}\right)_i,\left(\mathbf{q}_{\mathbf{C}}\right)_i\) 是每个选择子向量的第$i$个值。<br />
-\(\mathcal{Q}=\left\{\mathbf{q}_{\mathbf{L}}, \mathbf{q}_{\mathbf{R}}, \mathbf{q}_{\mathbf{o}}, \mathbf{q}_{\mathbf{M}}, \mathbf{q}_{\mathbf{C}}\right\}\)为选择子向量集合。</p>
+第$i$个门定义为：$$\left(\mathbf{q}_{\mathbf{L}}\right)_i,\left(\mathbf{q}_{\mathbf{R}}\right)_i,\left(\mathbf{q}_{\mathbf{O}}\right)_i,\left(\mathbf{q}_{\mathbf{M}}\right)_i,\left(\mathbf{q}_{\mathbf{C}}\right)_i$$ 是每个选择子向量的第$i$个值。  
+$$
+\mathcal{Q}=\left\{\mathbf{q}_{\mathbf{L}}, \mathbf{q}_{\mathbf{R}}, \mathbf{q}_{\mathbf{o}}, \mathbf{q}_{\mathbf{M}}, \mathbf{q}_{\mathbf{C}}\right\}
+$$为选择子向量集合。
 
-<p>门使用复制约束“连接”在一起，例如 $\mathbf{a}_3=\mathbf{c}_1$ - 门 3 的左侧输入是门 1 的输出。$\mathcal{S} $为复制约束集合。</p>
+门使用复制约束“连接”在一起，例如 $\mathbf{a}_3=\mathbf{c}_1$ - 门 3 的左侧输入是门 1 的输出。$\mathcal{S} $为复制约束集合。
 
-<p>电路完全由元组 $(\mathcal{Q}, \mathcal{S})$ 定义。</p>
+电路完全由元组 $(\mathcal{Q}, \mathcal{S})$ 定义。
 
-<h3 id="折叠方案">折叠方案</h3>
-<p>Nova论文引入了折叠方案并给出了如下直观定义：</p>
+### 折叠方案
+Nova论文引入了折叠方案并给出了如下直观定义：
 
-<p class="warning">[…] 一个对于关系$\mathcal{R}$的折叠方案，是一个协议：将检验两个$\mathcal{R}$ 中实例的任务归约到检验单个$\mathcal{R}$中实例的任务。</p>
+{: .warning}
+[...] 一个对于关系$\mathcal{R}$的折叠方案，是一个协议：将检验两个$\mathcal{R}$ 中实例的任务归约到检验单个$\mathcal{R}$中实例的任务。
 
-<p>完整定义见论文中的定义6。</p>
-<h3 id="承诺方案">承诺方案</h3>
-<p>方案使用对有限域 $\mathbb{F}$ 中的元素向量的隐藏和绑定的加法同态承诺方案。 我们将这样的方案记为为 $\operatorname{Com}$ 。 $\bar{A}=\operatorname{Com}\left(\mathrm{pp}_C, \mathbf{a} ; r\right)$ 为对向量 $\mathbf{a}$  使用随机值 $r \in \mathbb{F}$ 和承诺参数 $\mathrm{pp}_C$的承诺。</p>
+完整定义见论文中的定义6。
+### 承诺方案
+方案使用对有限域 $\mathbb{F}$ 中的元素向量的隐藏和绑定的加法同态承诺方案。 我们将这样的方案记为为 $\operatorname{Com}$ 。 $\bar{A}=\operatorname{Com}\left(\mathrm{pp}_C, \mathbf{a} ; r\right)$ 为对向量 $\mathbf{a}$  使用随机值 $r \in \mathbb{F}$ 和承诺参数 $\mathrm{pp}_C$的承诺。
 
-<h2 id="sangria">Sangria</h2>
-<p>Nova 为 R1CS 算术化构造了一个折叠方案。 这里，我们提出了对PLONK 算术化的折叠方案。 使用与 Nova 相同的洞见：</p>
-<ul>
-  <li>折叠是通过对输入的实例-见证对进行<strong>随机线性组合</strong>来进行的。</li>
-  <li>交叉项被吸收到<strong>错误</strong>（或松弛）向量和<strong>缩放因子</strong>之中。</li>
-  <li>通过对见证和松弛向量的<strong>加法同态承诺</strong>，方案变得不再平凡。</li>
-</ul>
+## Sangria
+Nova 为 R1CS 算术化构造了一个折叠方案。 这里，我们提出了对PLONK 算术化的折叠方案。 使用与 Nova 相同的洞见：
+- 折叠是通过对输入的实例-见证对进行**随机线性组合**来进行的。
+- 交叉项被吸收到**错误**（或松弛）向量和**缩放因子**之中。
+- 通过对见证和松弛向量的**加法同态承诺**，方案变得不再平凡。
 
-<h3 id="松弛plonk门方程">松弛PLONK门方程</h3>
+### 松弛PLONK门方程
 
-<p>对于标量 $u \in \mathbb{F}$ 和错误（松弛）向量 $\mathbf{e} \in \mathbb{F}^{n+s+1}$ ，松弛PLONK 门方程定义为 :</p>
+对于标量 $u \in \mathbb{F}$ 和错误（松弛）向量 $\mathbf{e} \in \mathbb{F}^{n+s+1}$ ，松弛PLONK 门方程定义为 :
 
-\[C_{\mathcal{Q}, i}^{\prime}(\mathbf{a}, \mathbf{b}, \mathbf{c}, u, \mathbf{e}):=u\left[\left(\mathbf{q}_{\mathbf{L}}\right)_i \mathbf{a}_i+\left(\mathbf{q}_{\mathbf{R}}\right)_i \mathbf{b}_i+\left(\mathbf{q}_{\mathbf{O}}\right)_i \mathbf{c}_i\right]+\left(\mathbf{q}_{\mathbf{M}}\right)_i \mathbf{a}_i \mathbf{b}_i+u^2\left(\mathbf{q}_{\mathbf{C}}\right)_i+\mathbf{e}_i\]
+$$
+C_{\mathcal{Q}, i}^{\prime}(\mathbf{a}, \mathbf{b}, \mathbf{c}, u, \mathbf{e}):=u\left[\left(\mathbf{q}_{\mathbf{L}}\right)_i \mathbf{a}_i+\left(\mathbf{q}_{\mathbf{R}}\right)_i \mathbf{b}_i+\left(\mathbf{q}_{\mathbf{O}}\right)_i \mathbf{c}_i\right]+\left(\mathbf{q}_{\mathbf{M}}\right)_i \mathbf{a}_i \mathbf{b}_i+u^2\left(\mathbf{q}_{\mathbf{C}}\right)_i+\mathbf{e}_i
+$$
 
-<p>松弛PLONK 中的复制约束与 PLONK 复制约束相同。 松弛 PLONK 的迹由元组 $(\mathbf{a}, \mathbf{b}, \mathbf{c}, u, \mathbf{e})$ 表示。</p>
+松弛PLONK 中的复制约束与 PLONK 复制约束相同。 松弛 PLONK 的迹由元组 $(\mathbf{a}, \mathbf{b}, \mathbf{c}, u, \mathbf{e})$ 表示。
 
-<p>对于 PLONK 实例-见证对 $(\mathbf{X}, \mathbf{W})$，我们将松弛PLONK实例-见证对 $(U, W)$ 定义为：</p>
+对于 PLONK 实例-见证对 $(\mathbf{X}, \mathbf{W})$，我们将松弛PLONK实例-见证对 $(U, W)$ 定义为：
 
-\[U:=\left(\mathbf{X}, u, \overline{W_a}, \overline{W_b}, \overline{W_c}, \bar{E}\right)\]
+$$
+U:=\left(\mathbf{X}, u, \overline{W_a}, \overline{W_b}, \overline{W_c}, \bar{E}\right)
+$$
 
-\[W:=\left(\mathbf{W}, \mathbf{e}, r_a, r_b, r_c, r_e\right)\]
+$$
+W:=\left(\mathbf{W}, \mathbf{e}, r_a, r_b, r_c, r_e\right)
+$$
 
-<p>其中 \(\overline{W_a}=\operatorname{Com}\left(\mathrm{pp}_W, \mathbf{w}_{\mathbf{a}} ; r_a\right), \overline{W_b}=\operatorname{Com}\left(\mathrm{pp}_W, \mathbf{w}_{\mathbf{b}} ; r_b\right),\overline{W_c}=\operatorname{Com}\left(\mathrm{pp}_W, \mathbf{w}_{\mathbf{c}} ; r_c\right)\) 
-且 \(\bar{E}=\operatorname{Com}\left(\mathrm{pp}_E, \mathbf{e} ; r_e\right)\)。</p>
 
-<p>重要的是，任何松弛PLONK 关系都可以通过以下方式转换为PLONK 关系：设置 $u=1$, $\mathbf{e}=\overrightarrow{0}$ 并提供必要的承诺。 因此，松弛PLONK 算术化是 NP 完全的。</p>
-<h3 id="对松弛plonk的折叠方案">对松弛PLONK的折叠方案</h3>
 
-<p>按照 Nova 的符号，折叠方案由 4 种算法 $\mathcal{G}, \mathcal{K}, \mathcal{P}, \mathcal{V}$ 定义：</p>
-<ul>
-  <li>$\mathcal{G}\left(1^\lambda\right) \rightarrow \mathrm{pp}$：输出大小边界 $n, s \in \mathbb{N}$ 和承诺参数 $\mathrm{pp}_W$ 和 $\mathrm{pp}_E$ ，分别用于大小为 $s$ 和 $n+s+1$ 的向量。</li>
-  <li>$\mathcal{K}(\mathrm{pp},(\mathcal{Q}, \mathcal{S})) \rightarrow(\mathrm{pk}, \mathrm{vk}):$ 输出 $\mathrm{vk} \leftarrow \perp$ 且 $\mathrm{pk} \leftarrow(\mathrm{pp}, \mathrm{vk},(\mathcal{Q}, \mathcal{S}))$。</li>
-</ul>
+其中 $$\overline{W_a}=\operatorname{Com}\left(\mathrm{pp}_W, \mathbf{w}_{\mathbf{a}} ; r_a\right), \overline{W_b}=\operatorname{Com}\left(\mathrm{pp}_W, \mathbf{w}_{\mathbf{b}} ; r_b\right),\overline{W_c}=\operatorname{Com}\left(\mathrm{pp}_W, \mathbf{w}_{\mathbf{c}} ; r_c\right)$$ 
+且 $$\bar{E}=\operatorname{Com}\left(\mathrm{pp}_E, \mathbf{e} ; r_e\right)$$。
 
-<p>验证者 $\mathcal{V}$ 输入验证者密钥 $\mathrm{vk}$ 和两个承诺的松散PLONK 实例， $\left(\mathbf{X}^{\prime}, u^{\prime}, \overline{W_a ^{\prime}}, \overline{W_b^{\prime}}, \overline{W_c^{\prime}}, \overline{E^{\prime}}\right)$ 和 $\left(\mathbf {X}^{\prime \prime}, u^{\prime \prime}, \overline{W_a^{\prime \prime}}, \overline{W_b^{\prime \prime}}, \overline{W_c ^{\prime \prime}}, \overline{E^{\prime \prime}}\right)$。 证明者 $\mathcal{P}$ 输入证明者密钥 $\mathrm{pk}$ 和两个实例及其相应的见证 $\left(\mathbf{W}^{\prime}, \mathbf{e}^{\prime}, r_a^{\prime}, r_b^{\prime}, r_c^{\prime}, r_e^{\prime}\right)$ and $\left(\mathbf{W}^{\prime \prime}, \mathbf{e}^{\prime \prime}, r_a^{\prime \prime}, r_b^{\prime \prime}, r_c^{\prime \prime}, r_e^{\prime \prime}\right)$。</p>
+重要的是，任何松弛PLONK 关系都可以通过以下方式转换为PLONK 关系：设置 $u=1$, $\mathbf{e}=\overrightarrow{0}$ 并提供必要的承诺。 因此，松弛PLONK 算术化是 NP 完全的。
+### 对松弛PLONK的折叠方案
 
-<p>Sangria 折叠方案按如下方式进行：</p>
+按照 Nova 的符号，折叠方案由 4 种算法 $\mathcal{G}, \mathcal{K}, \mathcal{P}, \mathcal{V}$ 定义：
+- $\mathcal{G}\left(1^\lambda\right) \rightarrow \mathrm{pp}$：输出大小边界 $n, s \in \mathbb{N}$ 和承诺参数 $\mathrm{pp}_W$ 和 $\mathrm{pp}_E$ ，分别用于大小为 $s$ 和 $n+s+1$ 的向量。
+- $\mathcal{K}(\mathrm{pp},(\mathcal{Q}, \mathcal{S})) \rightarrow(\mathrm{pk}, \mathrm{vk}):$ 输出 $\mathrm{vk} \leftarrow \perp$ 且 $\mathrm{pk} \leftarrow(\mathrm{pp}, \mathrm{vk},(\mathcal{Q}, \mathcal{S}))$。
 
-<ol>
-  <li>$\mathcal{P}$ 随机采样 $r_t$ ， 发送 $\bar{T}=\operatorname{Com}\left(\mathrm{pp}_E, \mathbf{t} ; r_t\right)$ ，其中$\mathbf{t}$ 按如下计算：</li>
-</ol>
+验证者 $\mathcal{V}$ 输入验证者密钥 $\mathrm{vk}$ 和两个承诺的松散PLONK 实例， $\left(\mathbf{X}^{\prime}, u^{\prime}, \overline{W_a ^{\prime}}, \overline{W_b^{\prime}}, \overline{W_c^{\prime}}, \overline{E^{\prime}}\right)$ 和 $\left(\mathbf {X}^{\prime \prime}, u^{\prime \prime}, \overline{W_a^{\prime \prime}}, \overline{W_b^{\prime \prime}}, \overline{W_c ^{\prime \prime}}, \overline{E^{\prime \prime}}\right)$。 证明者 $\mathcal{P}$ 输入证明者密钥 $\mathrm{pk}$ 和两个实例及其相应的见证 $\left(\mathbf{W}^{\prime}, \mathbf{e}^{\prime}, r_a^{\prime}, r_b^{\prime}, r_c^{\prime}, r_e^{\prime}\right)$ and $\left(\mathbf{W}^{\prime \prime}, \mathbf{e}^{\prime \prime}, r_a^{\prime \prime}, r_b^{\prime \prime}, r_c^{\prime \prime}, r_e^{\prime \prime}\right)$。
 
-\[\begin{aligned}
-\mathbf{t}:= &amp; u^{\prime \prime}\left(\mathbf{q}_{\mathbf{L}} \circ \mathbf{a}^{\prime}+\mathbf{q}_{\mathbf{R}} \circ \mathbf{b}^{\prime}+\mathbf{q}_{\mathbf{O}} \circ \mathbf{c}^{\prime}\right)+u^{\prime}\left(\mathbf{q}_{\mathbf{L}} \circ \mathbf{a}^{\prime \prime}+\mathbf{q}_{\mathbf{R}} \circ \mathbf{b}^{\prime \prime}+\mathbf{q}_{\mathbf{O}} \circ \mathbf{c}^{\prime \prime}\right) \\
-&amp; +\mathbf{q}_{\mathbf{M}} \circ\left(\mathbf{a}^{\prime} \circ \mathbf{b}^{\prime \prime}+\mathbf{a}^{\prime \prime} \circ \mathbf{b}^{\prime}\right) \\
-&amp; +2 r u^{\prime} u^{\prime \prime} \mathbf{q}_{\mathbf{C}}
-\end{aligned}\]
+Sangria 折叠方案按如下方式进行：
 
-<p>其中$o$ 指代逐元素乘法。</p>
+1. $\mathcal{P}$ 随机采样 $r_t$ ， 发送 $\bar{T}=\operatorname{Com}\left(\mathrm{pp}_E, \mathbf{t} ; r_t\right)$ ，其中$\mathbf{t}$ 按如下计算：
 
-<ol>
-  <li>
-    <p>$\mathcal{V}$ 随机采样挑战$r$。</p>
-  </li>
-  <li>
-    <p>$\mathcal{P}$ 和 $\mathcal{V}$ 输出折叠实例 $\left(\mathbf{X}, u, \overline{W_a}, \overline{W_b}, \overline{W_c}, \bar{E}\right)$ ，其中：</p>
-  </li>
-</ol>
+$$
+\begin{aligned}
+\mathbf{t}:= & u^{\prime \prime}\left(\mathbf{q}_{\mathbf{L}} \circ \mathbf{a}^{\prime}+\mathbf{q}_{\mathbf{R}} \circ \mathbf{b}^{\prime}+\mathbf{q}_{\mathbf{O}} \circ \mathbf{c}^{\prime}\right)+u^{\prime}\left(\mathbf{q}_{\mathbf{L}} \circ \mathbf{a}^{\prime \prime}+\mathbf{q}_{\mathbf{R}} \circ \mathbf{b}^{\prime \prime}+\mathbf{q}_{\mathbf{O}} \circ \mathbf{c}^{\prime \prime}\right) \\
+& +\mathbf{q}_{\mathbf{M}} \circ\left(\mathbf{a}^{\prime} \circ \mathbf{b}^{\prime \prime}+\mathbf{a}^{\prime \prime} \circ \mathbf{b}^{\prime}\right) \\
+& +2 r u^{\prime} u^{\prime \prime} \mathbf{q}_{\mathbf{C}}
+\end{aligned}
+$$
 
-\[\begin{aligned}
-\mathbf{X} &amp; \leftarrow \mathbf{X}^{\prime}+r \mathbf{X}^{\prime \prime} \\
-u &amp; \leftarrow u^{\prime}+r u^{\prime \prime} \\
-\overline{W_a} &amp; \leftarrow \overline{W_a^{\prime}}+r \overline{W_a^{\prime \prime}} \\
-\overline{W_b} &amp; \leftarrow \overline{W_b^{\prime}}+r \overline{W_b^{\prime \prime}} \\
-\overline{W_c} &amp; \leftarrow \overline{W_c^{\prime}}+r \overline{W_c^{\prime \prime}} \\
-\bar{E} &amp; \leftarrow \overline{E^{\prime}}-r \bar{T}+r^2 \overline{E^{\prime \prime}}
-\end{aligned}\]
+其中$o$ 指代逐元素乘法。
 
-<ol>
-  <li>$\mathcal{P}$ 输出折叠见证 $\left(\mathbf{W}, \mathbf{e}, r_a, r_b, r_c, r_e\right)$ ，其中：</li>
-</ol>
+2. $\mathcal{V}$ 随机采样挑战$r$。
 
-\[\begin{aligned}
-\mathbf{W} &amp; \leftarrow \mathbf{W}^{\prime}+r \mathbf{W}^{\prime \prime} \\
-r_a &amp; \leftarrow r_a^{\prime}+r \cdot r_a^{\prime \prime} \\
-r_b &amp; \leftarrow r_b^{\prime}+r \cdot r_b^{\prime \prime} \\
-r_c &amp; \leftarrow r_c^{\prime}+r \cdot r_c^{\prime \prime} \\
-\mathbf{e} &amp; \leftarrow \mathbf{e}^{\prime}-r \mathbf{t}+r^2 \mathbf{e}^{\prime \prime} \\
-r_e &amp; \leftarrow r_e^{\prime}-r \cdot r_t+r^2 \cdot r_e^{\prime \prime}
-\end{aligned}\]
+3. $\mathcal{P}$ 和 $\mathcal{V}$ 输出折叠实例 $\left(\mathbf{X}, u, \overline{W_a}, \overline{W_b}, \overline{W_c}, \bar{E}\right)$ ，其中：
 
-<p class="warning">定理：上述构造是对承诺松弛PLONK算术化的公开抛币折叠方案，具有完美完备性、知识可靠性、零知识性。</p>
+$$
+\begin{aligned}
+\mathbf{X} & \leftarrow \mathbf{X}^{\prime}+r \mathbf{X}^{\prime \prime} \\
+u & \leftarrow u^{\prime}+r u^{\prime \prime} \\
+\overline{W_a} & \leftarrow \overline{W_a^{\prime}}+r \overline{W_a^{\prime \prime}} \\
+\overline{W_b} & \leftarrow \overline{W_b^{\prime}}+r \overline{W_b^{\prime \prime}} \\
+\overline{W_c} & \leftarrow \overline{W_c^{\prime}}+r \overline{W_c^{\prime \prime}} \\
+\bar{E} & \leftarrow \overline{E^{\prime}}-r \bar{T}+r^2 \overline{E^{\prime \prime}}
+\end{aligned}
+$$
 
-<p>证明直观。 完美完备性可以按照代数规则展开直到下式成立：</p>
+4. $\mathcal{P}$ 输出折叠见证 $\left(\mathbf{W}, \mathbf{e}, r_a, r_b, r_c, r_e\right)$ ，其中：
 
-<p>\(C_{\mathcal{Q}, i}^{\prime}(\mathbf{a}, \mathbf{b}, \mathbf{c}, u, \mathbf{e})=C_{\mathcal{Q}, i}^{\prime}\left(\mathbf{a}^{\prime}, \mathbf{b}^{\prime}, \mathbf{c}^{\prime}, u^{\prime}, \mathbf{e}^{\prime}\right)+r^2 C_{\mathcal{Q}, i}^{\prime}\left(\mathbf{a}^{\prime \prime}, \mathbf{b}^{\prime \prime}, \mathbf{c}^{\prime \prime}, u^{\prime \prime}, \mathbf{e}^{\prime \prime}\right)\)
-也可以容易看到复制约束也保持成立。</p>
+$$
+\begin{aligned}
+\mathbf{W} & \leftarrow \mathbf{W}^{\prime}+r \mathbf{W}^{\prime \prime} \\
+r_a & \leftarrow r_a^{\prime}+r \cdot r_a^{\prime \prime} \\
+r_b & \leftarrow r_b^{\prime}+r \cdot r_b^{\prime \prime} \\
+r_c & \leftarrow r_c^{\prime}+r \cdot r_c^{\prime \prime} \\
+\mathbf{e} & \leftarrow \mathbf{e}^{\prime}-r \mathbf{t}+r^2 \mathbf{e}^{\prime \prime} \\
+r_e & \leftarrow r_e^{\prime}-r \cdot r_t+r^2 \cdot r_e^{\prime \prime}
+\end{aligned}
+$$
 
-<p>使用与 <sup id="fnref:KST22:1" role="doc-noteref"><a href="#fn:KST22" class="footnote" rel="footnote">1</a></sup> 相同的策略来证明知识可靠性。 具体来说，我们将分叉引理应用于折叠方案（<sup id="fnref:KST22:2" role="doc-noteref"><a href="#fn:KST22" class="footnote" rel="footnote">1</a></sup> 中的引理 1）以获得三个脚本。 然后我们证明提取器使用所有三个脚本来插值出原始的 $\mathbf{e}^{\prime}, r_e^{\prime}$ 和 $\mathbf{e}^{\prime \prime}, r_e^ {\prime \prime}$ 的值，以及任何两个脚本以插值出 $\left(\mathbf{W}^{\prime}, r_a^{\prime}, r_b^{\prime}, r_c^{\prime}\right)$ 和 $\left(\mathbf{W}^{\prime \prime}, r_a^{\prime \prime}, r_b^{\prime \prime}, r_c^{\prime \prime}\right)$。 接着证明插值结果属于满足电路的每个门等式和复制约束的迹。</p>
+{: .warning}
+定理：上述构造是对承诺松弛PLONK算术化的公开抛币折叠方案，具有完美完备性、知识可靠性、零知识性。
 
-<p>最后，零知识成立，因为证明者的消息是隐藏的承诺，而验证者只发送一个公共随机值。 完整的<a href="https://github.com/geometryresearch/technical_notes/blob/main/sangria_folding_plonk.pdf">技术说明</a>中给出了证明。</p>
-<h3 id="degree-2-custom-gates">Degree 2 Custom Gates</h3>
-<p>2次自定义门及其选择子记为：</p>
+证明直观。 完美完备性可以按照代数规则展开直到下式成立：
 
-\[G_i(\mathbf{a}, \mathbf{b}, \mathbf{c}):=\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g\left(\mathbf{a}_i, \mathbf{b}_i, \mathbf{c}_i\right)\]
+$$
+C_{\mathcal{Q}, i}^{\prime}(\mathbf{a}, \mathbf{b}, \mathbf{c}, u, \mathbf{e})=C_{\mathcal{Q}, i}^{\prime}\left(\mathbf{a}^{\prime}, \mathbf{b}^{\prime}, \mathbf{c}^{\prime}, u^{\prime}, \mathbf{e}^{\prime}\right)+r^2 C_{\mathcal{Q}, i}^{\prime}\left(\mathbf{a}^{\prime \prime}, \mathbf{b}^{\prime \prime}, \mathbf{c}^{\prime \prime}, u^{\prime \prime}, \mathbf{e}^{\prime \prime}\right)
+$$
+也可以容易看到复制约束也保持成立。
 
-<p>要折叠这样的门，将 $g$ 写为单项式的和，然后将单项式按次数分开。 令 $g_C、g_1$ 和 $g_2$ 分别为常数、1 次和 2 次单项式的和。 可以将松弛约束方程写为：</p>
+使用与 [^KST22] 相同的策略来证明知识可靠性。 具体来说，我们将分叉引理应用于折叠方案（[^KST22] 中的引理 1）以获得三个脚本。 然后我们证明提取器使用所有三个脚本来插值出原始的 $\mathbf{e}^{\prime}, r_e^{\prime}$ 和 $\mathbf{e}^{\prime \prime}, r_e^ {\prime \prime}$ 的值，以及任何两个脚本以插值出 $\left(\mathbf{W}^{\prime}, r_a^{\prime}, r_b^{\prime}, r_c^{\prime}\right)$ 和 $\left(\mathbf{W}^{\prime \prime}, r_a^{\prime \prime}, r_b^{\prime \prime}, r_c^{\prime \prime}\right)$。 接着证明插值结果属于满足电路的每个门等式和复制约束的迹。
 
-\[\begin{aligned}
-C_{\mathcal{Q}, i}^{\prime}(\mathbf{a}, \mathbf{b}, \mathbf{c}, u, \mathbf{e}):= &amp; u\left[\left(\mathbf{q}_{\mathbf{L}}\right)_i \mathbf{a}_i+\left(\mathbf{q}_{\mathbf{R}}\right)_i \mathbf{b}_i+(\mathbf{q} _\mathbf{O})_i \mathbf{c}_i+\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_1\left(\mathbf{a}_i, \mathbf{b}_i, \mathbf{c}_i\right)\right] \\
-&amp; +\left(\mathbf{q}_{\mathbf{M}}\right)_i \mathbf{a}_i \mathbf{b}_i+\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_2\left(\mathbf{a}_i, \mathbf{b}_i, \mathbf{c}_i\right)+u^2\left(\mathbf{q}_{\mathbf{C}}\right)_i+u^2\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_C+\mathbf{e}_i
-\end{aligned}\]
+最后，零知识成立，因为证明者的消息是隐藏的承诺，而验证者只发送一个公共随机值。 完整的[技术说明](https://github.com/geometryresearch/technical_notes/blob/main/sangria_folding_plonk.pdf)中给出了证明。
+### Degree 2 Custom Gates
+2次自定义门及其选择子记为：
 
-<p>折叠 $\left(\mathbf{a}^{\prime}, \mathbf{b}^{\prime}, \mathbf{c}^{\prime}, u^{\prime}, \mathbf{e} ^{\prime}\right)$ 和 $\left(\mathbf{a}^{\prime \prime}, \mathbf{b}^{\prime \prime}, \mathbf{c}^{\prime \prime}, u^{\prime \prime}, \mathbf{e}^{\prime \prime}\right)$ 仍然通过随机线性组合来进行，但是必须调整 $\mathbf{t}$ 向量以吸收由以下每个2次表达式产生的交叉项：</p>
+$$
+G_i(\mathbf{a}, \mathbf{b}, \mathbf{c}):=\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g\left(\mathbf{a}_i, \mathbf{b}_i, \mathbf{c}_i\right)
+$$
 
-\[\begin{aligned} 
-&amp; \left(u^{\prime}+r u^{\prime \prime}\right)\left[\left(\mathbf{q}_{\mathbf{L}}\right)_i\left(\mathbf{a}_i^{\prime}+r \mathbf{a}^{\prime \prime}{ }_i\right)+\left(\mathbf{q}_{\mathbf{R}}\right)_i\left(\mathbf{b}^{\prime}{ }_i+r \mathbf{b}^{\prime \prime}{ }_i\right)+\left(\mathbf{q}_{\mathbf{o}}\right)_i\left(\mathbf{c}_i^{\prime}+r \mathbf{c}^{\prime \prime}{ }_i\right)+\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_1\left(\left(\mathbf{a}_i^{\prime}+r \mathbf{a}^{\prime \prime}{ }_i\right),\left(\mathbf{b}^{\prime}{ }_i+r \mathbf{b}^{\prime \prime}{ }_i\right)\right.\right. \left.\left.,\left(\mathbf{c}_i^{\prime}+r \mathbf{c}_i^{\prime \prime}\right)\right)\right]\\ &amp; \left(\mathbf{q}_{\mathbf{M}}\right)_i\left(\mathbf{a}_i^{\prime}+r \mathbf{a}_i^{\prime \prime}\right)\left(\mathbf{b}_i^{\prime}+r \mathbf{b}_i^{\prime \prime}\right) \\ &amp; \left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_2\left(\left(\mathbf{a}_i^{\prime}+r \mathbf{a}_i^{\prime \prime}\right),\left(\mathbf{b}_i^{\prime}+r \mathbf{b}_i^{\prime \prime}\right),\left(\mathbf{c}_i^{\prime}+r \mathbf{c}_i^{\prime \prime}{ }_i\right)\right) \\ &amp; \left(u^{\prime}+r u^{\prime \prime}\right)^2\left(\mathbf{q}_{\mathbf{C}}\right)_i \\ &amp; \left(u^{\prime}+r u^{\prime \prime}\right)^2\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_C
-\end{aligned}\]
+要折叠这样的门，将 $g$ 写为单项式的和，然后将单项式按次数分开。 令 $g_C、g_1$ 和 $g_2$ 分别为常数、1 次和 2 次单项式的和。 可以将松弛约束方程写为：
 
-<h3 id="更高的扇入和扇出">更高的扇入和扇出</h3>
-<p>只要门方程的次数小于等于 2，当前方案就可以支持更高扇入扇出数量的电路。每个额外的门输入或输出都需要一个额外的见证列承诺。</p>
+$$
+\begin{aligned}
+C_{\mathcal{Q}, i}^{\prime}(\mathbf{a}, \mathbf{b}, \mathbf{c}, u, \mathbf{e}):= & u\left[\left(\mathbf{q}_{\mathbf{L}}\right)_i \mathbf{a}_i+\left(\mathbf{q}_{\mathbf{R}}\right)_i \mathbf{b}_i+(\mathbf{q} _\mathbf{O})_i \mathbf{c}_i+\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_1\left(\mathbf{a}_i, \mathbf{b}_i, \mathbf{c}_i\right)\right] \\
+& +\left(\mathbf{q}_{\mathbf{M}}\right)_i \mathbf{a}_i \mathbf{b}_i+\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_2\left(\mathbf{a}_i, \mathbf{b}_i, \mathbf{c}_i\right)+u^2\left(\mathbf{q}_{\mathbf{C}}\right)_i+u^2\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_C+\mathbf{e}_i
+\end{aligned}
+$$
 
-<h2 id="未来工作">未来工作</h2>
-<p>本文为标准 PLONK 算术化构造了折叠方案，并介绍了一些自定义的功能。 最后简要指出即将到来的未来工作的方向。</p>
+折叠 $\left(\mathbf{a}^{\prime}, \mathbf{b}^{\prime}, \mathbf{c}^{\prime}, u^{\prime}, \mathbf{e} ^{\prime}\right)$ 和 $\left(\mathbf{a}^{\prime \prime}, \mathbf{b}^{\prime \prime}, \mathbf{c}^{\prime \prime}, u^{\prime \prime}, \mathbf{e}^{\prime \prime}\right)$ 仍然通过随机线性组合来进行，但是必须调整 $\mathbf{t}$ 向量以吸收由以下每个2次表达式产生的交叉项：
 
-<h3 id="使用对sangria的zksnark的简洁-ivc">使用对Sangria的zkSNARK的简洁 IVC</h3>
-<p>Nova 表明一个折叠方案直接蕴含 IVC。 然而，这些 IVC 证明既不简洁也不是零知识的。 为了实现这两个性质，必须为新的松弛算术化设计一个 zKSNARK。 一个可能的方向是将 Sangria 迹转换为 PLONKish 迹，并为松弛向量添加一个额外的见证列。 另一个方向是直接修改 IOP 以管理新引入的 $u$ 和 $\mathbf{e}$ 值。</p>
+$$
+\begin{aligned} 
+& \left(u^{\prime}+r u^{\prime \prime}\right)\left[\left(\mathbf{q}_{\mathbf{L}}\right)_i\left(\mathbf{a}_i^{\prime}+r \mathbf{a}^{\prime \prime}{ }_i\right)+\left(\mathbf{q}_{\mathbf{R}}\right)_i\left(\mathbf{b}^{\prime}{ }_i+r \mathbf{b}^{\prime \prime}{ }_i\right)+\left(\mathbf{q}_{\mathbf{o}}\right)_i\left(\mathbf{c}_i^{\prime}+r \mathbf{c}^{\prime \prime}{ }_i\right)+\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_1\left(\left(\mathbf{a}_i^{\prime}+r \mathbf{a}^{\prime \prime}{ }_i\right),\left(\mathbf{b}^{\prime}{ }_i+r \mathbf{b}^{\prime \prime}{ }_i\right)\right.\right. \left.\left.,\left(\mathbf{c}_i^{\prime}+r \mathbf{c}_i^{\prime \prime}\right)\right)\right]\\ & \left(\mathbf{q}_{\mathbf{M}}\right)_i\left(\mathbf{a}_i^{\prime}+r \mathbf{a}_i^{\prime \prime}\right)\left(\mathbf{b}_i^{\prime}+r \mathbf{b}_i^{\prime \prime}\right) \\ & \left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_2\left(\left(\mathbf{a}_i^{\prime}+r \mathbf{a}_i^{\prime \prime}\right),\left(\mathbf{b}_i^{\prime}+r \mathbf{b}_i^{\prime \prime}\right),\left(\mathbf{c}_i^{\prime}+r \mathbf{c}_i^{\prime \prime}{ }_i\right)\right) \\ & \left(u^{\prime}+r u^{\prime \prime}\right)^2\left(\mathbf{q}_{\mathbf{C}}\right)_i \\ & \left(u^{\prime}+r u^{\prime \prime}\right)^2\left(\mathbf{q}_{\mathbf{G}}\right)_i \cdot g_C
+\end{aligned}
+$$
 
-<h3 id="降低递归开销">降低递归开销</h3>
-<p>在当前构造中，折叠验证者每个见证列使用1个承诺。 该方案还可以通过将见证矩阵 $\mathbf{W}$ 拍平为单个列向量，从而允许验证者使用单个见证承诺（和在Nova中一样）。 
-这样做需要参考串 $\mathrm{pp}_W$ 相对具有“扇入 2，扇出 1”门的电路来说要长三倍。 考虑到标准 PLONK IOP 使用对每个见证列的承诺，它还可能在完整的 IVC 方案中引入额外的检查和承诺打开。</p>
+### 更高的扇入和扇出
+只要门方程的次数小于等于 2，当前方案就可以支持更高扇入扇出数量的电路。每个额外的门输入或输出都需要一个额外的见证列承诺。
 
-<h3 id="更高次自定义门">更高次自定义门</h3>
-<p>“随机线性组合”折叠策略可以实现更高次的自定义门。 设$d$为约束方程的<strong>最高</strong>次数，整体策略如下：</p>
-<ol>
-  <li>将非松弛约束方程 $C_{\mathcal{Q}, i}$ 表示为单项式之和。</li>
-  <li>使用松弛因子 $u$ 的幂使 $C_{\mathcal{Q}, i}$ 成为<strong>齐次</strong> $d$次多项式。</li>
-  <li>加入错误项$\mathbf{e}$吸收交叉项。 交叉项现在具有$r$ 的从 1 到 $d-1$ 次幂。 将它们分别收集到向量 \(\mathbf{t}_1, \mathbf{t}_2, \ldots, \mathbf{t}_{\mathbf{d}-1}\) 使得</li>
-</ol>
+## 未来工作
+本文为标准 PLONK 算术化构造了折叠方案，并介绍了一些自定义的功能。 最后简要指出即将到来的未来工作的方向。
 
-\[\mathbf{e}=\mathbf{e}^{\prime}-\sum_{k=1}^{d-1} r^k \mathbf{t}_{\mathbf{k}}+r^d \mathbf{e}^{\prime \prime}\]
+### 使用对Sangria的zkSNARK的简洁 IVC
+Nova 表明一个折叠方案直接蕴含 IVC。 然而，这些 IVC 证明既不简洁也不是零知识的。 为了实现这两个性质，必须为新的松弛算术化设计一个 zKSNARK。 一个可能的方向是将 Sangria 迹转换为 PLONKish 迹，并为松弛向量添加一个额外的见证列。 另一个方向是直接修改 IOP 以管理新引入的 $u$ 和 $\mathbf{e}$ 值。
 
-<ol>
-  <li>按照标准结构中的描述进行折叠，进行以下修改：
-    <ul>
-      <li>证明者计算并发送<strong>每个</strong> $\mathbf{t}_{\mathbf{k}}$ 向量的承诺。</li>
-      <li>按照上面等式中的定义计算 $\mathbf{e}$ 并在承诺空间中应用相应的操作。</li>
-    </ul>
-  </li>
-</ol>
+### 降低递归开销
+在当前构造中，折叠验证者每个见证列使用1个承诺。 该方案还可以通过将见证矩阵 $\mathbf{W}$ 拍平为单个列向量，从而允许验证者使用单个见证承诺（和在Nova中一样）。 
+这样做需要参考串 $\mathrm{pp}_W$ 相对具有“扇入 2，扇出 1”门的电路来说要长三倍。 考虑到标准 PLONK IOP 使用对每个见证列的承诺，它还可能在完整的 IVC 方案中引入额外的检查和承诺打开。
 
-<p><strong>开销</strong>。 该策略为验证者和证明者都引入了额外的工作。 为了计算 $d-1$个交叉项向量及其承诺，证明者将执行 $\mathcal{O}(d *(n+s))$ 次域运算和 $\mathcal{O}(d *(n +s))$ 次点加。 类似地，在承诺空间中验证者计算 $\mathcal{O}(d)$ 次点加。 注意验证者的工作依然是安全参数和电路规模方面的常数。 然而确实需要在实现 IVC的折叠和拆分累积 <sup id="fnref:BCLMS20" role="doc-noteref"><a href="#fn:BCLMS20" class="footnote" rel="footnote">3</a></sup> 方法之间去进行更仔细的比较。</p>
+### 更高次自定义门
+“随机线性组合”折叠策略可以实现更高次的自定义门。 设$d$为约束方程的**最高**次数，整体策略如下：
+1. 将非松弛约束方程 $C_{\mathcal{Q}, i}$ 表示为单项式之和。
+2. 使用松弛因子 $u$ 的幂使 $C_{\mathcal{Q}, i}$ 成为**齐次** $d$次多项式。
+3. 加入错误项$\mathbf{e}$吸收交叉项。 交叉项现在具有$r$ 的从 1 到 $d-1$ 次幂。 将它们分别收集到向量 $$\mathbf{t}_1, \mathbf{t}_2, \ldots, \mathbf{t}_{\mathbf{d}-1}$$ 使得
 
-<p><strong>3次</strong>。使用上述策略对3次门使用随机线性组合策略的一个提案如下：</p>
+$$
+\mathbf{e}=\mathbf{e}^{\prime}-\sum_{k=1}^{d-1} r^k \mathbf{t}_{\mathbf{k}}+r^d \mathbf{e}^{\prime \prime}
+$$
 
-\[u^2\left[\left(\mathbf{q}_{\mathbf{L}}\right)_i \mathbf{a}_i+\left(\mathbf{q}_{\mathbf{R}}\right)_i \mathbf{b}_i+\left(\mathbf{q}_{\mathbf{O}}\right)_i \mathbf{c}_i\right]+u\left(\mathbf{q}_{\mathbf{M}}\right)_i \mathbf{a}_i \mathbf{b}_i+\left(\mathbf{q}_{\mathbf{3}}\right)_i \mathbf{a}_i \mathbf{b}_i \mathbf{c}_i +u^3\left(\mathbf{q}_{\mathbf{C}}\right)_i+\mathbf{e}_i\]
+4. 按照标准结构中的描述进行折叠，进行以下修改：
+- 证明者计算并发送**每个** $\mathbf{t}_{\mathbf{k}}$ 向量的承诺。
+- 按照上面等式中的定义计算 $\mathbf{e}$ 并在承诺空间中应用相应的操作。
 
-<p>其中错误项被适当调整过以吸收交叉项（有关交叉项的显式表示，请参阅<a href="https://github.com/geometryresearch/technical_notes/blob/main/sangria_folding_plonk.pdf">完整版</a>）。</p>
+**开销**。 该策略为验证者和证明者都引入了额外的工作。 为了计算 $d-1$个交叉项向量及其承诺，证明者将执行 $\mathcal{O}(d *(n+s))$ 次域运算和 $\mathcal{O}(d *(n +s))$ 次点加。 类似地，在承诺空间中验证者计算 $\mathcal{O}(d)$ 次点加。 注意验证者的工作依然是安全参数和电路规模方面的常数。 然而确实需要在实现 IVC的折叠和拆分累积 [^BCLMS20] 方法之间去进行更仔细的比较。
 
-<h3 id="查找门">查找门</h3>
-<p>PLONKish 算术化与 R1CS 的区别部分在于它们集成了查找论证的能力。 我们对通过为支持查找的算术化开发折叠策略来保持这种灵活性很感兴趣。</p>
+**3次**。使用上述策略对3次门使用随机线性组合策略的一个提案如下：
 
-<h2 id="致谢">致谢</h2>
-<p>感谢 Nat Bunner 和 Lev Soukhanov 对高次门折叠策略的改进。 我们还要感谢 Andrija Novakovic、Lai Ying Tong、Kobi Gurkan 和 Koh Wei Jie 提供的有益投入和贡献。</p>
+$$
+u^2\left[\left(\mathbf{q}_{\mathbf{L}}\right)_i \mathbf{a}_i+\left(\mathbf{q}_{\mathbf{R}}\right)_i \mathbf{b}_i+\left(\mathbf{q}_{\mathbf{O}}\right)_i \mathbf{c}_i\right]+u\left(\mathbf{q}_{\mathbf{M}}\right)_i \mathbf{a}_i \mathbf{b}_i+\left(\mathbf{q}_{\mathbf{3}}\right)_i \mathbf{a}_i \mathbf{b}_i \mathbf{c}_i +u^3\left(\mathbf{q}_{\mathbf{C}}\right)_i+\mathbf{e}_i
+$$
 
-<div class="footnotes" role="doc-endnotes">
-  <ol>
-    <li id="fn:KST22" role="doc-endnote">
-      <p>Kothapalli, Abhiram, Srinath Setty, and Ioanna Tzialla. <strong>Nova: Recursive zero-knowledge arguments from folding schemes.</strong> Annual International Cryptology Conference. Springer, Cham, 2022. <a href="https://eprint.iacr.org/2021/370">[URL]</a> <a href="#fnref:KST22" class="reversefootnote" role="doc-backlink">&#8617;</a> <a href="#fnref:KST22:1" class="reversefootnote" role="doc-backlink">&#8617;<sup>2</sup></a> <a href="#fnref:KST22:2" class="reversefootnote" role="doc-backlink">&#8617;<sup>3</sup></a></p>
-    </li>
-    <li id="fn:GWC19" role="doc-endnote">
-      <p>Gabizon, Ariel, Zachary J. Williamson, and Oana Ciobotaru. <strong>Plonk: Permutations over Lagrange-bases for Oecumenical Noninteractive arguments of Knowledge</strong>. Cryptology ePrint Archive, Paper 2019/953, 2019. <a href="https://eprint.iacr.org/2019/953">[URL]</a> <a href="#fnref:GWC19" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
-    </li>
-    <li id="fn:BCLMS20" role="doc-endnote">
-      <p>Benedikt Bunz, Alessandro Chiesa, William Lin, Pratyush Mishra, and Nicholas Spooner. <strong>Proof-carrying data without succinct arguments.</strong> Cryptology ePrint Archive, Paper 2020/1618, 2020. <a href="https://eprint.iacr.org/2020/1618">[URL]</a> <a href="#fnref:BCLMS20" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
-    </li>
-  </ol>
-</div>]]></content><author><name>Kurt Pan</name></author><category term="折叠方案" /><category term="同态承诺" /><category term="增量可验证计算" /><category term="递归零知识证明" /><category term="Plonk算术化" /><summary type="html"><![CDATA[原文：Sangria: a Folding Scheme for PLONK 作者：Nicolas Mohnblatt 译者：Kurt Pan 如 Nova [^KST22] 所示，可以使用折叠方案和 zkSNARK 实现增量可验证计算 (IVC)。 在本文中，我们提出了对PLONK算术化 [^GWC19] 变体的折叠方案。 之后，我们扩展松弛PLONK 算术化，以接受2次自定义门和具有更高门扇入扇出数的电路。 最后，概述了未来工作的路径，包括折叠更高次的门、支持查找门和为松弛PLONK算术化设计 IOP。 本文是 Sangria 技术论文的浓缩版。 请参阅完整版以获取证明和扩展讨论。 我们假设读者熟悉 IVC 和 Nova。 建议初步查看和阅读：Justin Drake 的 ZK Whiteboard Session 和这篇 Lambdaclass 博客文章。]]></summary></entry><entry><title type="html">SuperNova</title><link href="http://localhost:4000/2023/03/06/supernova.html" rel="alternate" type="text/html" title="SuperNova" /><published>2023-03-06T08:00:00+08:00</published><updated>2023-03-06T08:00:00+08:00</updated><id>http://localhost:4000/2023/03/06/supernova</id><content type="html" xml:base="http://localhost:4000/2023/03/06/supernova.html"><![CDATA[> - 原文：[Champagne SuperNova, incrementally verifiable computation](https://www.notamonadtutorial.com/champagne-supernova-incrementally-verifiable-computation-2/)
+
+其中错误项被适当调整过以吸收交叉项（有关交叉项的显式表示，请参阅[完整版](https://github.com/geometryresearch/technical_notes/blob/main/sangria_folding_plonk.pdf)）。
+
+### 查找门
+PLONKish 算术化与 R1CS 的区别部分在于它们集成了查找论证的能力。 我们对通过为支持查找的算术化开发折叠策略来保持这种灵活性很感兴趣。
+
+## 致谢
+感谢 Nat Bunner 和 Lev Soukhanov 对高次门折叠策略的改进。 我们还要感谢 Andrija Novakovic、Lai Ying Tong、Kobi Gurkan 和 Koh Wei Jie 提供的有益投入和贡献。
+
+{% include refs.md %}]]></content><author><name>Kurt Pan</name></author><category term="折叠方案" /><category term="同态承诺" /><category term="增量可验证计算" /><category term="递归零知识证明" /><category term="Plonk算术化" /><summary type="html"><![CDATA[原文：Sangria: a Folding Scheme for PLONK 作者：Nicolas Mohnblatt 译者：Kurt Pan 如 Nova [^KST22] 所示，可以使用折叠方案和 zkSNARK 实现增量可验证计算 (IVC)。 在本文中，我们提出了对PLONK算术化 [^GWC19] 变体的折叠方案。 之后，我们扩展松弛PLONK 算术化，以接受2次自定义门和具有更高门扇入扇出数的电路。 最后，概述了未来工作的路径，包括折叠更高次的门、支持查找门和为松弛PLONK算术化设计 IOP。 本文是 Sangria 技术论文的浓缩版。 请参阅完整版以获取证明和扩展讨论。 我们假设读者熟悉 IVC 和 Nova。 建议初步查看和阅读：Justin Drake 的 ZK Whiteboard Session 和这篇 Lambdaclass 博客文章。]]></summary></entry><entry><title type="html">SuperNova</title><link href="http://localhost:4000/2023/03/06/supernova.html" rel="alternate" type="text/html" title="SuperNova" /><published>2023-03-06T08:00:00+08:00</published><updated>2023-03-06T08:00:00+08:00</updated><id>http://localhost:4000/2023/03/06/supernova</id><content type="html" xml:base="http://localhost:4000/2023/03/06/supernova.html"><![CDATA[> - 原文：[Champagne SuperNova, incrementally verifiable computation](https://www.notamonadtutorial.com/champagne-supernova-incrementally-verifiable-computation-2/)
 > - 作者：Not a Monad Tutorial
 > - 译者：Kurt Pan
 
@@ -714,7 +953,96 @@ IETF 标准草案
 
 
 
-[^1]: 我多年前学习过数学，但一直在努力回避任何与纯数学有关的事情，包括群论。 我现在很后悔。 无论如何，这不会太技术性，但我也不是专家，所以可能会出错，而且一般来说会有点手忙脚乱。 如果不是很明显的话我再澄清一下，我不是密码学家。]]></content><author><name>Kurt Pan</name></author><category term="双线性映射" /><category term="BLS曲线" /><category term="BLS签名" /><summary type="html"><![CDATA[原文：BLS12-381 For The Rest Of Us 作者：Ben Edgington 译者：Kurt Pan 开始鼓捣之前，我希望我知道的。 近年来，椭圆曲线BLS12-381已成逐渐火了起来。许多协议都将其应用到了数字签名和零知识证明中：Zcash、Ethereum 2.0、Skale、Algorand、Dfinity、Chia 等等。 不幸的是，现有的关于 BLS12-381 的材料里充满着晦涩的咒语，比如“实例化其六角扭”和“最优扩展域塔”。我就是来解决这个问题的 :smile: 1 两个名词的正确翻译和含义 我不会对椭圆曲线及其令人兴奋的群的性质进行一般性介绍。这方面已经有一些很棒的入门书了，我将假设读者具有这些基础知识。当然，这里有很多内容并非只特定于 BLS12-381，而是也适用于其他曲线。 我多年前学习过数学，但一直在努力回避任何与纯数学有关的事情，包括群论。 我现在很后悔。 无论如何，这不会太技术性，但我也不是专家，所以可能会出错，而且一般来说会有点手忙脚乱。 如果不是很明显的话我再澄清一下，我不是密码学家。 &#8617;]]></summary></entry><entry><title type="html">配对或双线性映射</title><link href="http://localhost:4000/2023/02/22/pairings-or-bilinear-maps.html" rel="alternate" type="text/html" title="配对或双线性映射" /><published>2023-02-22T08:00:00+08:00</published><updated>2023-02-22T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/22/pairings-or-bilinear-maps</id><content type="html" xml:base="http://localhost:4000/2023/02/22/pairings-or-bilinear-maps.html"><![CDATA[> - 原文：[Pairings or bilinear maps](https://alinush.github.io/2022/12/31/pairings-or-bilinear-maps.html)
+[^1]: 我多年前学习过数学，但一直在努力回避任何与纯数学有关的事情，包括群论。 我现在很后悔。 无论如何，这不会太技术性，但我也不是专家，所以可能会出错，而且一般来说会有点手忙脚乱。 如果不是很明显的话我再澄清一下，我不是密码学家。]]></content><author><name>Kurt Pan</name></author><category term="双线性映射" /><category term="BLS曲线" /><category term="BLS签名" /><summary type="html"><![CDATA[原文：BLS12-381 For The Rest Of Us 作者：Ben Edgington 译者：Kurt Pan 开始鼓捣之前，我希望我知道的。 近年来，椭圆曲线BLS12-381已成逐渐火了起来。许多协议都将其应用到了数字签名和零知识证明中：Zcash、Ethereum 2.0、Skale、Algorand、Dfinity、Chia 等等。 不幸的是，现有的关于 BLS12-381 的材料里充满着晦涩的咒语，比如“实例化其六角扭”和“最优扩展域塔”。我就是来解决这个问题的 :smile: 1 两个名词的正确翻译和含义 我不会对椭圆曲线及其令人兴奋的群的性质进行一般性介绍。这方面已经有一些很棒的入门书了，我将假设读者具有这些基础知识。当然，这里有很多内容并非只特定于 BLS12-381，而是也适用于其他曲线。 我多年前学习过数学，但一直在努力回避任何与纯数学有关的事情，包括群论。 我现在很后悔。 无论如何，这不会太技术性，但我也不是专家，所以可能会出错，而且一般来说会有点手忙脚乱。 如果不是很明显的话我再澄清一下，我不是密码学家。 &#8617;]]></summary></entry><entry><title type="html">Daily Hunting of The SNARK (02/22/23)</title><link href="http://localhost:4000/2023/02/22/dhos.html" rel="alternate" type="text/html" title="Daily Hunting of The SNARK (02/22/23)" /><published>2023-02-22T08:00:00+08:00</published><updated>2023-02-22T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/22/dhos</id><content type="html" xml:base="http://localhost:4000/2023/02/22/dhos.html"><![CDATA[[@rkm0959：](https://twitter.com/rkm0959)超椭圆曲线的故事，包括[@secconctf](https://twitter.com/secconctf)，[@pb_ctf](https://twitter.com/pb_ctf)和隐藏阶群  
+[https://rkm0959.tistory.com/285](https://rkm0959.tistory.com/285)
+
+---
+
+[@julesdesmit：](https://twitter.com/julesdesmit)大家好！ 我用小于1000行代码完成了supernova的通用实现（包括放松版的R1CS ）。 它可以支持多种类型的算术化！  
+[https://github.com/jules/supernova](https://github.com/jules/supernova)
+
+---
+[@yezhang1998：](https://twitter.com/yezhang1998)zkEVM 可以说已成为以太坊扩容的黄金标准技术。 在本文中，我想分享我们在构建 zkEVM 时吸取的一些经验教训，以及我们如何考虑不同的权衡。  
+[https://hackmd.io/@yezhang/B167uMZRs](https://hackmd.io/@yezhang/B167uMZRs)  
+[https://mp.weixin.qq.com/s/GbcybotwQn3dY5400y3I5A](https://mp.weixin.qq.com/s/GbcybotwQn3dY5400y3I5A)
+
+---
+[@p_e：](https://twitter.com/p_e)发布一个极简 Cairo 1.0 模板，使你可以立即试用该语言或开始迁移项目。  
+[https://github.com/auditless/cairo-template](https://github.com/auditless/cairo-template)  
+为什么要为 Cairo 1.0 构建新模板？我需要一个简单且可维护的基础来升级 @yagi_fi 合约（不喜欢子模块或分叉）。但这并不简单，生态中的一些朋友也报告说在初始设置方面遇到困难......我查看了使用 Cairo 1.0 的 4 种不同配置，并选择了（我认为）最简单的一种。这个模板主要是对优秀的 Quaireaux 库 [https://github.com/keep-starknet-strange/quaireaux](https://github.com/keep-starknet-strange/quaireaux)的翻版，使他们的想法和工具可以用在在你自己的项目中。你可以使用此模板来玩转 Cairo 1.0，开发和测试合约。 未来我的目标是使其与新框架 (Protostar)、标准、库和安全工具保持同步。
+
+---
+[@Ingo_zk：](https://twitter.com/Ingo_zk)刚刚推出：Ingopedia V2 🙌🦁，零知识证明相关的社区驱动的全面的信息聚合，💥资源、文章、讲座、影片、教程。对零知识感兴趣？ 仔细看！
+ht  t[ps://ingonyama-zk.github.io/ingopedia/
+
+
+[@Ingo_zk](https://twitter.com/Ingo_zk) ：新的综述论文：《查找论证简史》 [https://github.com/ingonyama-zk/papers/blob/main/lookups.pdf](https://github.com/ingonyama-zk/papers/blob/main/lookups.pdf)
+
+1) 查找协议的使用 2) plookup 3) cq（全新的视角） 4) 从plookup到cq的演进
+
+![image](https://imgs.zhubai.love/90210da1e2854dfd90dd2d548d896acf_2158450480702357504.png)
+
+
+[@RiscZero：](https://twitter.com/RiscZero)上周我们发布了两个用以支持我们zkVM的重要的内容：
+- 一篇形式化描述我们证明系统的白皮书
+- 我们的形式化方法工作的Lean4 库
+
+发布 #1: 我们证明系统的形式化描述。
+
+证明系统基于 STARK，使用 DEEP-ALI & FRI。 所有详细信息可以在此处查看：
+
+[https://www.risczero.com/proof-system-in-detail.pdf](https://www.risczero.com/proof-system-in-detail.pdf)
+
+![image](https://imgs.zhubai.love/2dd4843629d349aba7d6d69ab2cbe2d0_2158450480702357504.png)
+
+有没有对证明系统更温和的介绍？ 我们在网站上也提供了许多参考文档和解释。
+
+[risczero.com/docs/explainers](https://www.risczero.com/docs/explainers)
+
+![image](https://imgs.zhubai.love/85c87129bc254e9f851fe460f6879905_2158450480702357504.png)
+
+
+发布 #2：一个用于我们形式化验证工作的 lean4 库
+
+[https://www.github.com/risc0/risc0-lean4](https://www.github.com/risc0/risc0-lean4)
+
+什么是形式化方法？形式化方法 (FM) 是指使用自动数学推理来提高关键系统的安全性和可靠性的工具和过程。[https://en.wikipedia.org/wiki/Formal_methods](https://en.wikipedia.org/wiki/Formal_methods)
+
+定理证明器Lean。Lean 是一种静态类型的函数式语言，类似于 Haskell，有一个标准库、一个 IO monad、类型类（traits）、VS 代码集成、一个不错的编译器等。 [https://leanprover.github.io/](https://leanprover.github.io/) 但Lean不仅仅是一种编程语言，它也是一个非常强大的定理证明器。 如果可以用Lean来表示你的程序/协议，那么就可以使用Lean来严格证明程序会按照你的想法运行的。这是非常强大的。
+
+今天，我们对收据验证提供了实验性支持。 我们现在正在扩展以支持所有相关的密码学、电路、zkVM 以及基于它们构建的协议和应用的证明。后续？ 持续审计，但更精确、透明、可重现和可扩展。这是一些使用Lean的SNARKs形式化验证工作：
+
+
+- [https://github.com/BoltonBailey/formal-snarks-project](https://github.com/BoltonBailey/formal-snarks-project)
+- [https://github.com/starkware-libs/formal-proofs](https://github.com/starkware-libs/formal-proofs)
+- [https://github.com/yatima-inc/Nova.lean](https://github.com/yatima-inc/Nova.lean)
+
+
+----
+
+[@axiom_xyz：](https://twitter.com/axiom_xyz)在开源我们的 ZK 电路后，我们宣布推出 Axiom 开源计划：[https://www.axiom.xyz/open-source](https://www.axiom.xyz/open-source)
+
+我们将在为期 12 周的兼职远程计划中提供 ZK 电路开发指导，以构建 ZK 电路原语。 2 月 28 日前在 [https://airtable.com/shrDFTfjnIssROIQG](https://airtable.com/shrDFTfjnIssROIQG) 申请。我们很高兴在以下方面指导项目：
+
+
+- 数据结构（Merkle tries，Bloom过滤器）
+- 计算原语（正则表达式、zkVMs）
+- 密码学（SHA-256、Blake2b、KZG、IPA、Ed25519、RSA）
+- 数值计算（特征值、回归、PCA、page rank）
+
+或者带上你自己的想法！
+
+无需 ZK 经验。 我们在 halo2 中提供 ZK 理论和 ZK 电路实现的直接指导。
+
+先决条件包括熟悉：
+
+
+- 模运算
+- 低级编程（Rust、C、C++）
+
+椭圆曲线的知识是有帮助的，但不是强制性的。
+
+所有制作的作品都将是开源的，主要目标是让贡献者加入到 ZK 中的开源项目之中。 我们将酌情为计算和直接拨款提供支持。]]></content><author><name>Kurt Pan</name></author><category term="DHOS" /><summary type="html"><![CDATA[@rkm0959：超椭圆曲线的故事，包括@secconctf，@pb_ctf和隐藏阶群 https://rkm0959.tistory.com/285 @julesdesmit：大家好！ 我用小于1000行代码完成了supernova的通用实现（包括放松版的R1CS ）。 它可以支持多种类型的算术化！ https://github.com/jules/supernova @yezhang1998：zkEVM 可以说已成为以太坊扩容的黄金标准技术。 在本文中，我想分享我们在构建 zkEVM 时吸取的一些经验教训，以及我们如何考虑不同的权衡。 https://hackmd.io/@yezhang/B167uMZRs https://mp.weixin.qq.com/s/GbcybotwQn3dY5400y3I5A @p_e：发布一个极简 Cairo 1.0 模板，使你可以立即试用该语言或开始迁移项目。 https://github.com/auditless/cairo-template 为什么要为 Cairo 1.0 构建新模板？我需要一个简单且可维护的基础来升级 @yagi_fi 合约（不喜欢子模块或分叉）。但这并不简单，生态中的一些朋友也报告说在初始设置方面遇到困难……我查看了使用 Cairo 1.0 的 4 种不同配置，并选择了（我认为）最简单的一种。这个模板主要是对优秀的 Quaireaux 库 https://github.com/keep-starknet-strange/quaireaux的翻版，使他们的想法和工具可以用在在你自己的项目中。你可以使用此模板来玩转 Cairo 1.0，开发和测试合约。 未来我的目标是使其与新框架 (Protostar)、标准、库和安全工具保持同步。 @Ingo_zk：刚刚推出：Ingopedia V2 🙌🦁，零知识证明相关的社区驱动的全面的信息聚合，💥资源、文章、讲座、影片、教程。对零知识感兴趣？ 仔细看！ ht t[ps://ingonyama-zk.github.io/ingopedia/ @Ingo_zk ：新的综述论文：《查找论证简史》 https://github.com/ingonyama-zk/papers/blob/main/lookups.pdf 1) 查找协议的使用 2) plookup 3) cq（全新的视角） 4) 从plookup到cq的演进 @RiscZero：上周我们发布了两个用以支持我们zkVM的重要的内容： 一篇形式化描述我们证明系统的白皮书 我们的形式化方法工作的Lean4 库 发布 #1: 我们证明系统的形式化描述。 证明系统基于 STARK，使用 DEEP-ALI &amp; FRI。 所有详细信息可以在此处查看： https://www.risczero.com/proof-system-in-detail.pdf 有没有对证明系统更温和的介绍？ 我们在网站上也提供了许多参考文档和解释。 risczero.com/docs/explainers 发布 #2：一个用于我们形式化验证工作的 lean4 库 https://www.github.com/risc0/risc0-lean4 什么是形式化方法？形式化方法 (FM) 是指使用自动数学推理来提高关键系统的安全性和可靠性的工具和过程。https://en.wikipedia.org/wiki/Formal_methods 定理证明器Lean。Lean 是一种静态类型的函数式语言，类似于 Haskell，有一个标准库、一个 IO monad、类型类（traits）、VS 代码集成、一个不错的编译器等。 https://leanprover.github.io/ 但Lean不仅仅是一种编程语言，它也是一个非常强大的定理证明器。 如果可以用Lean来表示你的程序/协议，那么就可以使用Lean来严格证明程序会按照你的想法运行的。这是非常强大的。 今天，我们对收据验证提供了实验性支持。 我们现在正在扩展以支持所有相关的密码学、电路、zkVM 以及基于它们构建的协议和应用的证明。后续？ 持续审计，但更精确、透明、可重现和可扩展。这是一些使用Lean的SNARKs形式化验证工作： https://github.com/BoltonBailey/formal-snarks-project https://github.com/starkware-libs/formal-proofs https://github.com/yatima-inc/Nova.lean @axiom_xyz：在开源我们的 ZK 电路后，我们宣布推出 Axiom 开源计划：https://www.axiom.xyz/open-source 我们将在为期 12 周的兼职远程计划中提供 ZK 电路开发指导，以构建 ZK 电路原语。 2 月 28 日前在 https://airtable.com/shrDFTfjnIssROIQG 申请。我们很高兴在以下方面指导项目： 数据结构（Merkle tries，Bloom过滤器） 计算原语（正则表达式、zkVMs） 密码学（SHA-256、Blake2b、KZG、IPA、Ed25519、RSA） 数值计算（特征值、回归、PCA、page rank） 或者带上你自己的想法！ 无需 ZK 经验。 我们在 halo2 中提供 ZK 理论和 ZK 电路实现的直接指导。 先决条件包括熟悉： 模运算 低级编程（Rust、C、C++） 椭圆曲线的知识是有帮助的，但不是强制性的。 所有制作的作品都将是开源的，主要目标是让贡献者加入到 ZK 中的开源项目之中。 我们将酌情为计算和直接拨款提供支持。]]></summary></entry><entry><title type="html">配对或双线性映射</title><link href="http://localhost:4000/2023/02/22/pairings-or-bilinear-maps.html" rel="alternate" type="text/html" title="配对或双线性映射" /><published>2023-02-22T08:00:00+08:00</published><updated>2023-02-22T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/22/pairings-or-bilinear-maps</id><content type="html" xml:base="http://localhost:4000/2023/02/22/pairings-or-bilinear-maps.html"><![CDATA[> - 原文：[Pairings or bilinear maps](https://alinush.github.io/2022/12/31/pairings-or-bilinear-maps.html)
 > - 作者：Alin Tomescu
 > - 译者：Kurt Pan
 
@@ -1270,96 +1598,7 @@ ristretto255/point_mul  time:   [40.163 µs 40.187 µs 40.212 µs]
 
 [^alin-where]: 除了 Boneh 在 [^Mill86Short] 中发表的手稿之外，我找不到任何 Miller 在这方面发表的作品的踪迹。 任何提示我将不胜感激。
 
-{% include refs.md %}]]></content><author><name>Kurt Pan</name></author><category term="双线性映射" /><category term="BLS曲线" /><category term="BLS签名" /><category term="身份基加密" /><summary type="html"><![CDATA[原文：Pairings or bilinear maps 作者：Alin Tomescu 译者：Kurt Pan 摘要： 配对，或者双线性映射，是对密码学来说非常强大的一个数学工具。配对给我们带来了最简洁的零知识证明[^GGPR12e]$^,$[^PGHR13e]$^,$[^Grot16]，最高效的门限签名[^BLS01]，第一个可用的身份基加密（IBE）方案[^BF01] ，以及其它很多高效的密码系统[^KZG10]。本文中，我将介绍一点配对的性质，其密码学应用和令人着迷的历史。事实上，读完此文后，你可能会想要去监狱里待上个一两年。]]></summary></entry><entry><title type="html">Daily Hunting of The SNARK (02/22/23)</title><link href="http://localhost:4000/2023/02/22/dhos.html" rel="alternate" type="text/html" title="Daily Hunting of The SNARK (02/22/23)" /><published>2023-02-22T08:00:00+08:00</published><updated>2023-02-22T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/22/dhos</id><content type="html" xml:base="http://localhost:4000/2023/02/22/dhos.html"><![CDATA[[@rkm0959：](https://twitter.com/rkm0959)超椭圆曲线的故事，包括[@secconctf](https://twitter.com/secconctf)，[@pb_ctf](https://twitter.com/pb_ctf)和隐藏阶群  
-[https://rkm0959.tistory.com/285](https://rkm0959.tistory.com/285)
-
----
-
-[@julesdesmit：](https://twitter.com/julesdesmit)大家好！ 我用小于1000行代码完成了supernova的通用实现（包括放松版的R1CS ）。 它可以支持多种类型的算术化！  
-[https://github.com/jules/supernova](https://github.com/jules/supernova)
-
----
-[@yezhang1998：](https://twitter.com/yezhang1998)zkEVM 可以说已成为以太坊扩容的黄金标准技术。 在本文中，我想分享我们在构建 zkEVM 时吸取的一些经验教训，以及我们如何考虑不同的权衡。  
-[https://hackmd.io/@yezhang/B167uMZRs](https://hackmd.io/@yezhang/B167uMZRs)  
-[https://mp.weixin.qq.com/s/GbcybotwQn3dY5400y3I5A](https://mp.weixin.qq.com/s/GbcybotwQn3dY5400y3I5A)
-
----
-[@p_e：](https://twitter.com/p_e)发布一个极简 Cairo 1.0 模板，使你可以立即试用该语言或开始迁移项目。  
-[https://github.com/auditless/cairo-template](https://github.com/auditless/cairo-template)  
-为什么要为 Cairo 1.0 构建新模板？我需要一个简单且可维护的基础来升级 @yagi_fi 合约（不喜欢子模块或分叉）。但这并不简单，生态中的一些朋友也报告说在初始设置方面遇到困难......我查看了使用 Cairo 1.0 的 4 种不同配置，并选择了（我认为）最简单的一种。这个模板主要是对优秀的 Quaireaux 库 [https://github.com/keep-starknet-strange/quaireaux](https://github.com/keep-starknet-strange/quaireaux)的翻版，使他们的想法和工具可以用在在你自己的项目中。你可以使用此模板来玩转 Cairo 1.0，开发和测试合约。 未来我的目标是使其与新框架 (Protostar)、标准、库和安全工具保持同步。
-
----
-[@Ingo_zk：](https://twitter.com/Ingo_zk)刚刚推出：Ingopedia V2 🙌🦁，零知识证明相关的社区驱动的全面的信息聚合，💥资源、文章、讲座、影片、教程。对零知识感兴趣？ 仔细看！
-ht  t[ps://ingonyama-zk.github.io/ingopedia/
-
-
-[@Ingo_zk](https://twitter.com/Ingo_zk) ：新的综述论文：《查找论证简史》 [https://github.com/ingonyama-zk/papers/blob/main/lookups.pdf](https://github.com/ingonyama-zk/papers/blob/main/lookups.pdf)
-
-1) 查找协议的使用 2) plookup 3) cq（全新的视角） 4) 从plookup到cq的演进
-
-![image](https://imgs.zhubai.love/90210da1e2854dfd90dd2d548d896acf_2158450480702357504.png)
-
-
-[@RiscZero：](https://twitter.com/RiscZero)上周我们发布了两个用以支持我们zkVM的重要的内容：
-- 一篇形式化描述我们证明系统的白皮书
-- 我们的形式化方法工作的Lean4 库
-
-发布 #1: 我们证明系统的形式化描述。
-
-证明系统基于 STARK，使用 DEEP-ALI & FRI。 所有详细信息可以在此处查看：
-
-[https://www.risczero.com/proof-system-in-detail.pdf](https://www.risczero.com/proof-system-in-detail.pdf)
-
-![image](https://imgs.zhubai.love/2dd4843629d349aba7d6d69ab2cbe2d0_2158450480702357504.png)
-
-有没有对证明系统更温和的介绍？ 我们在网站上也提供了许多参考文档和解释。
-
-[risczero.com/docs/explainers](https://www.risczero.com/docs/explainers)
-
-![image](https://imgs.zhubai.love/85c87129bc254e9f851fe460f6879905_2158450480702357504.png)
-
-
-发布 #2：一个用于我们形式化验证工作的 lean4 库
-
-[https://www.github.com/risc0/risc0-lean4](https://www.github.com/risc0/risc0-lean4)
-
-什么是形式化方法？形式化方法 (FM) 是指使用自动数学推理来提高关键系统的安全性和可靠性的工具和过程。[https://en.wikipedia.org/wiki/Formal_methods](https://en.wikipedia.org/wiki/Formal_methods)
-
-定理证明器Lean。Lean 是一种静态类型的函数式语言，类似于 Haskell，有一个标准库、一个 IO monad、类型类（traits）、VS 代码集成、一个不错的编译器等。 [https://leanprover.github.io/](https://leanprover.github.io/) 但Lean不仅仅是一种编程语言，它也是一个非常强大的定理证明器。 如果可以用Lean来表示你的程序/协议，那么就可以使用Lean来严格证明程序会按照你的想法运行的。这是非常强大的。
-
-今天，我们对收据验证提供了实验性支持。 我们现在正在扩展以支持所有相关的密码学、电路、zkVM 以及基于它们构建的协议和应用的证明。后续？ 持续审计，但更精确、透明、可重现和可扩展。这是一些使用Lean的SNARKs形式化验证工作：
-
-
-- [https://github.com/BoltonBailey/formal-snarks-project](https://github.com/BoltonBailey/formal-snarks-project)
-- [https://github.com/starkware-libs/formal-proofs](https://github.com/starkware-libs/formal-proofs)
-- [https://github.com/yatima-inc/Nova.lean](https://github.com/yatima-inc/Nova.lean)
-
-
-----
-
-[@axiom_xyz：](https://twitter.com/axiom_xyz)在开源我们的 ZK 电路后，我们宣布推出 Axiom 开源计划：[https://www.axiom.xyz/open-source](https://www.axiom.xyz/open-source)
-
-我们将在为期 12 周的兼职远程计划中提供 ZK 电路开发指导，以构建 ZK 电路原语。 2 月 28 日前在 [https://airtable.com/shrDFTfjnIssROIQG](https://airtable.com/shrDFTfjnIssROIQG) 申请。我们很高兴在以下方面指导项目：
-
-
-- 数据结构（Merkle tries，Bloom过滤器）
-- 计算原语（正则表达式、zkVMs）
-- 密码学（SHA-256、Blake2b、KZG、IPA、Ed25519、RSA）
-- 数值计算（特征值、回归、PCA、page rank）
-
-或者带上你自己的想法！
-
-无需 ZK 经验。 我们在 halo2 中提供 ZK 理论和 ZK 电路实现的直接指导。
-
-先决条件包括熟悉：
-
-
-- 模运算
-- 低级编程（Rust、C、C++）
-
-椭圆曲线的知识是有帮助的，但不是强制性的。
-
-所有制作的作品都将是开源的，主要目标是让贡献者加入到 ZK 中的开源项目之中。 我们将酌情为计算和直接拨款提供支持。]]></content><author><name>Kurt Pan</name></author><category term="DHOS" /><summary type="html"><![CDATA[@rkm0959：超椭圆曲线的故事，包括@secconctf，@pb_ctf和隐藏阶群 https://rkm0959.tistory.com/285 @julesdesmit：大家好！ 我用小于1000行代码完成了supernova的通用实现（包括放松版的R1CS ）。 它可以支持多种类型的算术化！ https://github.com/jules/supernova @yezhang1998：zkEVM 可以说已成为以太坊扩容的黄金标准技术。 在本文中，我想分享我们在构建 zkEVM 时吸取的一些经验教训，以及我们如何考虑不同的权衡。 https://hackmd.io/@yezhang/B167uMZRs https://mp.weixin.qq.com/s/GbcybotwQn3dY5400y3I5A @p_e：发布一个极简 Cairo 1.0 模板，使你可以立即试用该语言或开始迁移项目。 https://github.com/auditless/cairo-template 为什么要为 Cairo 1.0 构建新模板？我需要一个简单且可维护的基础来升级 @yagi_fi 合约（不喜欢子模块或分叉）。但这并不简单，生态中的一些朋友也报告说在初始设置方面遇到困难……我查看了使用 Cairo 1.0 的 4 种不同配置，并选择了（我认为）最简单的一种。这个模板主要是对优秀的 Quaireaux 库 https://github.com/keep-starknet-strange/quaireaux的翻版，使他们的想法和工具可以用在在你自己的项目中。你可以使用此模板来玩转 Cairo 1.0，开发和测试合约。 未来我的目标是使其与新框架 (Protostar)、标准、库和安全工具保持同步。 @Ingo_zk：刚刚推出：Ingopedia V2 🙌🦁，零知识证明相关的社区驱动的全面的信息聚合，💥资源、文章、讲座、影片、教程。对零知识感兴趣？ 仔细看！ ht t[ps://ingonyama-zk.github.io/ingopedia/ @Ingo_zk ：新的综述论文：《查找论证简史》 https://github.com/ingonyama-zk/papers/blob/main/lookups.pdf 1) 查找协议的使用 2) plookup 3) cq（全新的视角） 4) 从plookup到cq的演进 @RiscZero：上周我们发布了两个用以支持我们zkVM的重要的内容： 一篇形式化描述我们证明系统的白皮书 我们的形式化方法工作的Lean4 库 发布 #1: 我们证明系统的形式化描述。 证明系统基于 STARK，使用 DEEP-ALI &amp; FRI。 所有详细信息可以在此处查看： https://www.risczero.com/proof-system-in-detail.pdf 有没有对证明系统更温和的介绍？ 我们在网站上也提供了许多参考文档和解释。 risczero.com/docs/explainers 发布 #2：一个用于我们形式化验证工作的 lean4 库 https://www.github.com/risc0/risc0-lean4 什么是形式化方法？形式化方法 (FM) 是指使用自动数学推理来提高关键系统的安全性和可靠性的工具和过程。https://en.wikipedia.org/wiki/Formal_methods 定理证明器Lean。Lean 是一种静态类型的函数式语言，类似于 Haskell，有一个标准库、一个 IO monad、类型类（traits）、VS 代码集成、一个不错的编译器等。 https://leanprover.github.io/ 但Lean不仅仅是一种编程语言，它也是一个非常强大的定理证明器。 如果可以用Lean来表示你的程序/协议，那么就可以使用Lean来严格证明程序会按照你的想法运行的。这是非常强大的。 今天，我们对收据验证提供了实验性支持。 我们现在正在扩展以支持所有相关的密码学、电路、zkVM 以及基于它们构建的协议和应用的证明。后续？ 持续审计，但更精确、透明、可重现和可扩展。这是一些使用Lean的SNARKs形式化验证工作： https://github.com/BoltonBailey/formal-snarks-project https://github.com/starkware-libs/formal-proofs https://github.com/yatima-inc/Nova.lean @axiom_xyz：在开源我们的 ZK 电路后，我们宣布推出 Axiom 开源计划：https://www.axiom.xyz/open-source 我们将在为期 12 周的兼职远程计划中提供 ZK 电路开发指导，以构建 ZK 电路原语。 2 月 28 日前在 https://airtable.com/shrDFTfjnIssROIQG 申请。我们很高兴在以下方面指导项目： 数据结构（Merkle tries，Bloom过滤器） 计算原语（正则表达式、zkVMs） 密码学（SHA-256、Blake2b、KZG、IPA、Ed25519、RSA） 数值计算（特征值、回归、PCA、page rank） 或者带上你自己的想法！ 无需 ZK 经验。 我们在 halo2 中提供 ZK 理论和 ZK 电路实现的直接指导。 先决条件包括熟悉： 模运算 低级编程（Rust、C、C++） 椭圆曲线的知识是有帮助的，但不是强制性的。 所有制作的作品都将是开源的，主要目标是让贡献者加入到 ZK 中的开源项目之中。 我们将酌情为计算和直接拨款提供支持。]]></summary></entry><entry><title type="html">Daily Hunting of The SNARK (02/19/23)</title><link href="http://localhost:4000/2023/02/19/dhos.html" rel="alternate" type="text/html" title="Daily Hunting of The SNARK (02/19/23)" /><published>2023-02-19T08:00:00+08:00</published><updated>2023-02-19T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/19/dhos</id><content type="html" xml:base="http://localhost:4000/2023/02/19/dhos.html"><![CDATA[StarkWareSessions2023  
+{% include refs.md %}]]></content><author><name>Kurt Pan</name></author><category term="双线性映射" /><category term="BLS曲线" /><category term="BLS签名" /><category term="身份基加密" /><summary type="html"><![CDATA[原文：Pairings or bilinear maps 作者：Alin Tomescu 译者：Kurt Pan 摘要： 配对，或者双线性映射，是对密码学来说非常强大的一个数学工具。配对给我们带来了最简洁的零知识证明[^GGPR12e]$^,$[^PGHR13e]$^,$[^Grot16]，最高效的门限签名[^BLS01]，第一个可用的身份基加密（IBE）方案[^BF01] ，以及其它很多高效的密码系统[^KZG10]。本文中，我将介绍一点配对的性质，其密码学应用和令人着迷的历史。事实上，读完此文后，你可能会想要去监狱里待上个一两年。]]></summary></entry><entry><title type="html">Daily Hunting of The SNARK (02/19/23)</title><link href="http://localhost:4000/2023/02/19/dhos.html" rel="alternate" type="text/html" title="Daily Hunting of The SNARK (02/19/23)" /><published>2023-02-19T08:00:00+08:00</published><updated>2023-02-19T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/19/dhos</id><content type="html" xml:base="http://localhost:4000/2023/02/19/dhos.html"><![CDATA[StarkWareSessions2023  
 [https://www.youtube.com/playlist?list=PLcIyXLwiPilUs4PiBinyL2ker2oEFT-mc](https://www.youtube.com/playlist?list=PLcIyXLwiPilUs4PiBinyL2ker2oEFT-mc)
 
 
