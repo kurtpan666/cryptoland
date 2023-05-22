@@ -87,6 +87,8 @@ cryptoland:
         url: /2023/03/06/supernova.html
       - title: Sangria
         url: /2023/03/07/sangria.html
+      - title: Origami
+        url: /2023/04/13/origami.html
       - title: 使用 SNARKs 批处理 ECDSA 签名
         url: /2022/08/01/batch-ecdsa.html
 
