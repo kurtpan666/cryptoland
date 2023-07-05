@@ -1,4 +1,385 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-04-13T14:11:48+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">ZK-SNARKs中的算术化</title><link href="http://localhost:4000/2023/04/04/arithmetization.html" rel="alternate" type="text/html" title="ZK-SNARKs中的算术化" /><published>2023-04-04T08:00:00+08:00</published><updated>2023-04-04T08:00:00+08:00</updated><id>http://localhost:4000/2023/04/04/arithmetization</id><content type="html" xml:base="http://localhost:4000/2023/04/04/arithmetization.html"><![CDATA[<blockquote>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-07-05T13:39:36+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">给人民群众的BLS12-381指南</title><link href="http://localhost:4000/2023/07/01/bls12381-restofus.html" rel="alternate" type="text/html" title="给人民群众的BLS12-381指南" /><published>2023-07-01T08:00:00+08:00</published><updated>2023-07-01T08:00:00+08:00</updated><id>http://localhost:4000/2023/07/01/bls12381-restofus</id><content type="html" xml:base="http://localhost:4000/2023/07/01/bls12381-restofus.html"><![CDATA[<blockquote>
+  <ul>
+    <li>原文：<a href="https://hackmd.io/@benjaminion/bls12-381">BLS12-381 For The Rest Of Us</a></li>
+    <li>作者：Ben Edgington</li>
+    <li>译者：Kurt Pan</li>
+  </ul>
+</blockquote>
+
+<p class="info"><strong><em>开始鼓捣之前，我希望我知道的。</em></strong>
+近年来，椭圆曲线<a href="https://electriccoin.co/blog/new-snark-curve/">BLS12-381</a>逐渐火了起来。许多协议都将其应用到了数字签名和零知识证明中：Zcash、Ethereum 2.0、Skale、Algorand、Dfinity、Chia 等等。
+不幸的是，现有的关于 BLS12-381 的资料里充满着晦涩的咒语，比如“实例化其六度扭”和“最优扩张域塔”。我就是来解决这个问题的 :smile: <sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup>
+我不会对椭圆曲线及其令人兴奋的群的性质进行一般性介绍。这方面已经有一些<a href="https://andrea.corbellini.name/2015/05/17/elliptic-curve-cryptography-a-gentle-introduction/">很棒的入门资料</a>了，我将假设读者具有这些基础知识。当然，这里的很多内容并非只特定于 BLS12-381，而是也适用于其他曲线。</p>
+
+<!--more-->
+
+<h2 id="动机">动机</h2>
+<p>BLS12-381 是一个配对友好的椭圆曲线。</p>
+
+<p><a href="https://en.wikipedia.org/wiki/Pairing-based_cryptography">基于配对的密码学</a>在过去几十年得到了很大发展，使得很多有用的新应用成为了可能，例如<a href="https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf">可高效聚合的</a><a href="https://www.iacr.org/archive/asiacrypt2001/22480516.pdf">短数字签名</a>、<a href="https://en.wikipedia.org/wiki/Boneh-Franklin_scheme">基于身份的密码学</a>、单轮<a href="http://cgi.di.uoa.gr/~aggelos/crypto/page4/assets/joux-tripartite.pdf">多方密钥交换</a>和高效的多项式承诺方案（如<a href="https://dankradfeist.de/ethereum/2020/06/16/kate-polynomial-commitments.html">KZG承诺</a>）。</p>
+
+<p>配对友好的椭圆曲线是具有良好的嵌入度（将在<a href="#embeddeg">下文</a>解释！）和大素数阶子群（也见<a href="#subgroup">下文</a>）的曲线。这些曲线很少见。如果你随机创建一条椭圆曲线，它是配对友好的可能性会非常之小。然而，它们确实是可以构造出来的， BLS 曲线就是被显式构造为配对友好的。还有<a href="https://eprint.iacr.org/2006/372.pdf">其他几个</a>配对友好曲线簇。</p>
+
+<details>
+<summary><b>如果你想了解有关基于配对的密码学的更多信息，请阅读下面这些不错的材料：</b> <i>（点击展开。）</i></summary>
+<p style="margin-left: .3em; border-left: .15em solid black; padding-left: .5em;">
+一个简短（但技术性的）<a href="https://courses.csail.mit.edu/6.897/spring04/L25.pdf">解释</a>，以及<a href="https://www.math.uwaterloo.ca/~ajmeneze/publications/pairings.pdf">另一个</a>。
+<br /><br />
+Vitalik 对<a href="https://vitalik.ca/general/2017/01/14/exploring_ecp.html">椭圆曲线配对</a>进行的很好的一般性介绍。
+<br /><br />
+这份<a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4730686/">NIST 报告</a>可读性很强。我推荐第 2 节和附录。
+<br /><br />
+同样好的背景资料是配对友好曲线的<a href="https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-02.html">IETF 标准草案</a>。
+<br /><br />
+如果你想真的<em>理解</em>这些东西，那么<a href="https://www.craigcostello.com.au/s/PairingsForBeginners.pdf">Pairings for Beginners</a>就很棒。如果你仔细研究，学习里面的例子，事实证明它并没有看起来那么可怕。我真的很推荐这个（但我也一直都在学习中……）。
+</p>
+</details>
+
+<h2 id="关于曲线bls12-381本身">关于曲线BLS12-381本身</h2>
+<h3 id="历史">历史</h3>
+<p>曲线 BLS12-381是由<a href="https://twitter.com/ebfull">Sean Bowe</a>在 2017 年初作为一次 Zcash 协议升级的基础内容<a href="https://electriccoin.co/blog/new-snark-curve/">设计</a>的。它既对配对友好（使其对数字签名高效）又对构造 zkSnarks 高效。</p>
+
+<p>“下一代”、可扩展区块链协议的激增使得生成可以高效聚合以及可以轻松门限化的短数字签名变得非常重要。BLS12-381 的性质使其经常成为这些协议的首选曲线。</p>
+
+<p>一些密码学库——Apache 的<a href="https://milagro.apache.org/">Milagro</a>等成熟库，以及<a href="https://github.com/herumi/mcl">Herumi</a>和<a href="https://github.com/supranational/blst">Blst</a>等新兴库——都支持 BLS12-381。并且已经有将 BLS12-381 纳入 IETF 标准的举措，例如<a href="https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-02.html#rfc.section.4.2.2">Pairing-Friendly Curves</a>、<a href="https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9">Hashing to Elliptic Curves</a>和<a href="https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00#section-4.2">BLS signatures</a>。这对于协议互操作性来说是个好消息！</p>
+
+<h3 id="命名">命名</h3>
+<p>BLS12-381 是<a href="https://eprint.iacr.org/2002/088.pdf">Barreto、Lynn 和 Scott</a>描述的曲线簇的一部分（他们就是是此处的 B、L 和 S -<a href="#blssig">稍后</a>将出现不同的 BLS 三人组）。</p>
+
+<p>12 是曲线的嵌入度：既不太低也不太高。<a href="">稍后</a>我们将讨论嵌入度。</p>
+
+<p>381是表示曲线上坐标所需的比特数：域模数，$q$。 一个点的坐标来自一个具有素数阶的有限域，而那个素数，$q$, 是 381 比特。381 是一个相当方便的数字，因为我们可以为每个域元素使用 48 个字节，剩下 3 比特用于有用的标志或算术优化。这个数字的大小取决于<a href="">安全要求</a>和实现效率。</p>
+
+<h3 id="曲线方程和参数">曲线方程和参数</h3>
+
+<h3 id="域扩张">域扩张</h3>
+
+<p>域扩张是椭圆曲线配对的基础。 BLS12-381中的“12” 不仅是嵌入度，也是需要使用的（相对）域扩张度。</p>
+
+<p>可以认为域$F_q$只是整数模 $q: 0,1, \ldots, q-1$。 但 $F_{q^{12}}$ 是什么鬼，$F_q$ 的第十二个扩张吗？</p>
+
+<p>我没在任何地方找到任何简单的关于域扩张的解释，以下是我在努力理解一段时间后的尝试。</p>
+
+<p>我们来构造一个 $F_{q^2}$，$F_q$ 的二次扩张。 在 $F_{q^2}$ 中，我们将域元素表示为一次多项式，比如 $a_0+a_1 x$，如果愿意也可以更简洁地写为 $\left(a_0, a_1\right)$。</p>
+
+<p>两个元素相加很容易： $(a, b)+(c, d)=a+b x+c+d x=(a+c)+(b+d) x=$ $(a+c, b+ d)$。 只需确保约简$a+c$ 和 $b+d$ 模 $q$。</p>
+
+<p>相乘呢？ $(a, b) \times(c, d)=(a+b x)(c+d x)=a c+(a d+b c) x+b d x^2=???$。 糟糕 - 我们应该如何处理 $x^2$ 系数呢？</p>
+
+<p>We need a rule for reducing polynomials so that they have a degree less than two. In this example we’re going to take $x^2+1=0$ as our rule, but we could make other choices. There are only two rules about our rule ${ }^{[2]}$ :</p>
+<ol>
+  <li>it must be a degree $k$ polynomial, where $k$ is our extension degree, 2 in this case; and</li>
+  <li>it must be irreducible in the field we are extending. That means it must not be possible to factor it into two or more lower degree polynomials.
+Applying our rule, by substituting $x^2=-1$, gives us the final result $(a, b) \times(c, d)=$ $a c+(a d+b c) x+b d x^2=(a c-b d)+(a d+b c) x=(a c-b d, a d+b c)$. This might look a little familiar from complex arithmetic: $(a+i b) \times(c+i d)=(a c-b d)+(a d+b c) i$. This is not a coincidence! The complex numbers are a quadratic extension of the real numbers.</li>
+</ol>
+
+<p>我们需要一个规则来约简多项式，使其次数小于二。 此例中，我们将采用 $x^2+1=0$ 作为该规则，但也可以做出其他选择。 关于我们的规则 ${ }^{[2]}$ 只有两条规则：</p>
+<ol>
+  <li>它必须是一个 $k$ 次多项式，其中 $k$ 是我们的扩展度，在本例中为 2； 和</li>
+  <li>在扩张的域中必须是不可约的。 这意味着不可能将它分解为两个或多个较低次数的多项式。
+应用我们的规则，通过代入 $x^2=-1$，得到最终结果 $(a, b) \times(c, d)=$ $a c+(a d+b c) x+b d x^2= (a c-b d)+(a d+b c) x=(a c-b d, a d+b c)$。 从复杂的算术来看，这可能看起来有点熟悉：$(a+i b) \times(c+i d)=(a c-b d)+(a d+b c) i$。 这不是巧合！ 复数是实数的二次扩展。</li>
+</ol>
+
+<h3 id="两条曲线">两条曲线</h3>
+
+<h3 id="subgroup">子群</h3>
+
+<h3 id="twist">扭</h3>
+
+<p>但还有另一个挑战。 正如前面所讨论的，在 $F_{q^{12}}$ 中进行算术运算非常复杂且效率低下，而且曲线运算需要大量的算术运算。 看起来这就是卡住我们的地方。</p>
+
+<p>真的这样吗？嗯，这里故事有一个转折… <sup id="fnref:8" role="doc-noteref"><a href="#fn:8" class="footnote" rel="footnote">2</a></sup></p>
+
+<p><a href="http://indigo.ie/~mscott/twists.pdf">扭</a>（twist）类似于坐标变换。 更奇妙的是，可以用来将我们的 $E\left(F_{q^{12}}\right)$ 曲线转换为在仍具有阶 $r$ 的子群的低阶域上定义的曲线。 此外，这个子群与我们的 $G_2$ 群 <sup id="fnref:9" role="doc-noteref"><a href="#fn:9" class="footnote" rel="footnote">3</a></sup> 之间有一个简单的映射。</p>
+
+<p>BLS12-381 使用“六度扭”（sextic twist），意思是它将扩张域的阶降低了六倍。 因此扭曲线上的 $G_2$ 可以通过 $F_{q^2}$ 而不是 $F_{q^{12}}$ 来定义，这大大节省了复杂性。</p>
+
+<p>我还没有在任何地方看到这个被写下来 - 但<a href="https://eprint.iacr.org/2005/133.pdf">这里</a>的第 3 节在试图进行解释 - 如果我们找到一个 $u$ 使得 $u^6=(1+i)^{-1}$ ，那么我们可以定义扭变换为$(x, y) \rightarrow\left(x / u^2, y / u^3\right)$。 这会将原始曲线 $E: y^2=x^3+4$ 转换为曲线 $E^{\prime}: y^2=x^3+4 / u^6=x^3+4(1 +i）$。 $E$ 和 $E^{\prime}$ 看起来不同，但实际上是针对不同基域 <sup id="fnref:10" role="doc-noteref"><a href="#fn:10" class="footnote" rel="footnote">4</a></sup> 中的系数呈现的同一对象。</p>
+
+<p>当扭<a href="http://indigo.ie/~mscott/twists.pdf">正确完成</a>时，得到的 $E^{\prime}$ 具有一个 $r$ 阶子群，映射到我们的 $G_2$ 群，反之亦然。 因此，事实证明，在大多数情况下，我们可以在 $E^{\prime}$ 上使用 $F_{q^2}$ ，并仅在需要时（即实际计算配对时）将 $G_2$ 映射回 $E\left(F_{q^{12} }\right)$ 。</p>
+
+<p>这是我们将使用的两个群：</p>
+<ul>
+  <li>$G_1 \subset E\left(F_q\right)$ 其中 $E: y^2=x^3+4$</li>
+  <li>$G_2 \subset E^{\prime}\left(F_{q^2}\right)$ 其中 $E^{\prime}: y^2=x^3+4(1+i)$</li>
+</ul>
+
+<p>这就是为什么 BLS12-381 看起来像两条曲线，而不是一条曲线的原因。</p>
+
+<p>注意$G_1$ 群中的点的坐标是一对整数，$G_2$ 群中的点的坐标是一对复数，因此 $G_2$ 的点占用两倍的存储量，工作成本更高 。这导致了有趣的<a href="#swapg1g2">实现中的权衡</a>。</p>
+
+<h3 id="pairing">配对</h3>
+
+<p>所以这个配对到底是怎么回事呢？</p>
+
+<p>就 BLS12-381 而言，配对就是取点 $P \in G_1 \subset E\left(F_q\right)$ 和点 $Q \in G_2 \subset E^{\prime}\left (F_{q^2}\right)$ ，并输出群 $G_T \subset F_{q^{12}}$ 中的一个点。 也就是说，对于配对 $e$， $e: G_1 \times G_2 \rightarrow G_T$</p>
+
+<p>配对通常表示为 $e(P, Q)$ 并且具有一些特殊性质。 我不会去详细介绍所有细节（我们几乎可以将它们视为黑盒），<a href="https://vitalik.ca/general/2017/01/14/exploring_ecp.html">Vitalik 的文章</a>提供了很好的介绍，而对于所有精彩的细节，让我再次推荐<a href="https://www.craigcostello.com.au/s/PairingsForBeginners.pdf">“Pairings For Beginners”</a>。</p>
+
+<p>我们感兴趣的是：</p>
+<ul>
+  <li>$e(P, Q+R)=e(P, Q) \cdot e(P, R)$，且</li>
+  <li>$e(P+S, R)=e(P, R) \cdot e(S, R)$</li>
+</ul>
+
+<p>由此，我们可以推断出以下所有等式都成立：</p>
+<ul>
+  <li>$e([a] P,[b] Q)=e(P,[b] Q)^a=e(P, Q)^{a b}=e(P,[a] Q)^b= e([b] P,[a] Q)$. <sup id="fnref:11" role="doc-noteref"><a href="#fn:11" class="footnote" rel="footnote">5</a></sup></li>
+</ul>
+
+<p>这正是我们验证<a href="#blssig">数字签名</a>时所需要的。</p>
+
+<p>如果有帮助，你可以大致将配对视为将 $G_1$ 中的点“乘以”$G_2$ 中的点的一种方法。 如果所有群都用加法符号，那么算术就会很好地运转。 然而我们通常将 $G_T$ 用乘法表示，因此这种表示法并不太正确。</p>
+
+<h3 id="embeddeg">嵌入度</h3>
+
+<p>我们已经多次提到嵌入度，它的重要性使得它足以出现在曲线的名称中。</p>
+
+<p>嵌入度 $k$ 为使 $r$ 整除 $\left(q^k-1\right)$ 的最小正整数。 因此，在 BLS12-381 的情况下，$r$ 是 $\left(q^{12}-1\right)$ <sup id="fnref:12" role="doc-noteref"><a href="#fn:12" class="footnote" rel="footnote">6</a></sup> 的因子，但不是任何更低幂的因子。</p>
+
+<p>事实证明，这个数字给出了满足两个等价条件的最小域扩张 $F_{q^k}$：</p>
+<ul>
+  <li>$F_{q^k}$ 包含多个 $r$ 阶子群（用于构造 $G_2$，见<a href="#subgroup">上文</a>）；</li>
+  <li>$F_{q^k}$ 包含所有 $r$ 次单位根（用于构造 $G_T$，见<a href="#rootofunity">下文</a>）</li>
+</ul>
+
+<p>这些是使得配对成为可能必须满足的条件。</p>
+
+<p>嵌入度的选择是安全和效率之间的平衡（一如既往）。 <a href="#securelevel">安全</a>方面，嵌入度也称为安全乘子：较高的嵌入度使得$G_T$中的离散对数问题更难解决。 然而，高嵌入度意味着我们必须在高阶扩展，例如$F_{q^{12}}$，中进行域操作，这是笨重且低效的。 （即使使用<a href="#twist">扭</a>也是如此：最大可用扭为六度，因此我们能做的最好的是将域扩张度减少六倍。并且无论如何，配对必须在大扩张域中完成。）</p>
+
+<p>12 或 24 的嵌入度似乎是当前许多应用的最佳选择。 再次强调，BLS12-381 的嵌入度就是名称中的12。</p>
+
+<h3 id="securelevel">安全级别</h3>
+<p>密码系统的安全性是<a href="https://en.wikipedia.org/wiki/Security_level">以比特来衡量的</a>。非正式地，我将 $n$ 比特安全性理解为“需要大约 $2^n$ 个操作才能破解”。</p>
+
+<p>对于椭圆曲线密码学，安全性就是要使离散对数问题困难。 也就是说，给定一个点 $g$ 和一个点 $g^k$（以乘法群表示），在没有先验知识的情况下找到 $k$ 必定是不可行的。 也就是说，至少需要 $2^n$ 次操作才能实现此目的，按今天的说法，$n&gt;100$ 左右。</p>
+
+<p>对于配对友好的曲线，离散对数问题在我们使用的三个群中的每一个中都必须是困难的。 因此，为了实现 $n$ 比特安全性，</p>
+
+<ul>
+  <li>素数群阶 $r$ 必须至少为 $2 n$ 位长，因为有些算法（例如 <a href="https://en.wikipedia.org/wiki/Pollard%27s_rho_algorithm_for_logarithms">Pollard 的 rho 算法</a>）的开销为 $O(\sqrt{r})$。</li>
+  <li>扩张域 $F_{q^k}$ 必须足够大，以免受到<a href="https://en.wikipedia.org/wiki/General_number_field_sieve">数域筛法</a>等方法的影响。</li>
+</ul>
+
+<p>BLS12-381 旨在根据这些原则提供大约 128 比特的安全级别，这得到了初步分析的支持。 例如，请参见<a href="https://eprint.iacr.org/2006/372.pdf">分类法论文</a>中的表 1.1。</p>
+
+<p>然而，经过仔细检查，按照上述第二个标准，“大小为 $3072=12 \times 256$ 位的有限扩张域似乎不够大”（引用<a href="https://eprint.iacr.org/2019/077.pdf">这里</a>的第 2 节）。</p>
+
+<p>根据 NCC Group 引用其他来源的<a href="https://www.nccgroup.trust/globalassets/our-research/us/public-reports/2019/ncc_group_zcash2018_public_report_2019-01-30_v1.3.pdf">一份报告</a>，实际安全级别可能在 117 到 120 比特之间（参见第 8 页）。 他们认为这是一个完全足够的安全级别：“达到‘128 比特’的价值主要是心理上的”。 Sean Bowe 还根据<a href="https://github.com/zcash/zcash/issues/4065#issuecomment-572202467">最初的设计目标</a>对安全级别进行了评论。</p>
+
+<h3 id="cofactor">协因子</h3>
+
+<p>一个子群的协因子是整个群的大小和子群大小的比。平常的椭圆曲线密码学要求协因子非常小，<a href="https://crypto.stackexchange.com/questions/2881/why-would-anyone-use-an-elliptic-curve-with-a-cofactor-1">通常为一</a>，以避免对离散对数的小子群攻击。 然而在基于配对的密码学中，情况并非如此，$G_1$ 和 $G_2$群的协因子可能会非常大。</p>
+
+<p>事实证明，只要小心，我们可以在拥有大协因子的同时依然安全。 即当$G_1, G_2$和$G_T$的协因子不包含小于$r$的素因子时。<a href="https://eprint.iacr.org/2015/247.pdf">这篇论文</a>的3.2节对此进行了详细讨论。然而这并非BLS12-381的情况 ，$G_1$ 和 $G_2$ 的协因子都有一些小因子。 因此，我们必须<a href="#subgroupcheck">在实现中</a>小心小子群攻击。</p>
+
+<p>作为参考，$G_1$ 和 $G_2$ 的协因子如下。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">群</th>
+      <th style="text-align: left">协因子</th>
+      <th style="text-align: left">方程</th>
+      <th style="text-align: left">值（十六进制）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">$G_1$</td>
+      <td style="text-align: left">$h_1$</td>
+      <td style="text-align: left">$(\mathrm{x}-1)^2 / 3$</td>
+      <td style="text-align: left">0x396c8c005555e1568c00aaab0000aaab</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">$G_2$</td>
+      <td style="text-align: left">$h_2$</td>
+      <td style="text-align: left">$\left(\mathrm{x}^8-4 \mathrm{x}^7+5 \mathrm{x}^6-4 \mathrm{x}^4+6 \mathrm{x}^3-4 \mathrm{x}^2-4 \mathrm{x}+13\right) / 9$</td>
+      <td style="text-align: left">0x5d543a95414e7f1091d50792876a202cd91de4547085abaa68a205b2e5a7ddfa628f1cb4d9e82ef21537e293a6691ae1616ec6e786f0c70cf1c38e31c7238e5</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>这一切意义何在？ 事实证明，乘以协因子是将椭圆曲线上的任意点映射到相应子群 $G_1$ 或 $G_2$ <sup id="fnref:13" role="doc-noteref"><a href="#fn:13" class="footnote" rel="footnote">7</a></sup> 的直接方法。 这在进行“哈希到曲线”等操作时很重要：我们首先在曲线上取一个点，然后通过乘以协因子（所谓的<a href="#cofactorclear">协因子清除</a>）将其映射到正确的群里。</p>
+
+<h3 id="rootofunity">单位根</h3>
+<p>这里是一个关于单位根的注释，因为它们出现在两个完全不同且不相关的上下文中，这可能会令人困惑。</p>
+
+<p>First, we said that to support zkSnark schemes with this curve, for some biggish $n$ we want to have a $2^n$ th root of unity in the field $F_r$ (not $F_q$, note). This is to facilitate efficient fast Fourier transforms for manipulating very large polynomials over the scalar field $F_r$. From the hexadecimal representation of $r-1$, it’s clearly a multiple of $2^{32}$, so there is a $2^{32}$ th root of unity $\left(2^{32}\right.$ of them, in fact). Job done,</p>
+
+<p>首先，我们说，为了用这条曲线支持 zkSnark 方案，对于一些较大的 $n$，我们希望在域 $F_r$ 中有一个 $2^n$ 单位根（注意，不是 $F_q$）。 这是为了促进高效的快速傅里叶变换，以在标量域 $F_r$ 上操作非常大的多项式。 从$r-1$的十六进制表示来看，它显然是$2^{32}$的倍数，因此存在$2^{32}$的统一根$\left(2^{32}\right.$ 事实上，其中）。 任务完成，</p>
+
+<p>Second, and completely unrelated, the effect of the pairing is to map the two points from $G_1$ and $G_2$ onto an $r$ th root of unity in $F_{q^{12}}$. These $r$ th roots of unity actually form a subgroup in $F_{q^{12}}$ of order $r^{[14]}$, which is the group we call $G_T$.</p>
+
+<p>Let’s briefly revisit our discussion of extending the base field for $E$ to $F_{q^{12}}$, which we did in order to find another subgroup of order $r$. It also turns out $F_{q^{12}}$ treated as a multiplicative group is the smallest field extension that contains the $r$ th roots of unity in the field, the 12 coming from the embedding degree once again. This is why $G_T$ is defined over $F_{q^{12}}$.</p>
+
+<h2 id="曲线bls12-381的使用">曲线BLS12-381的使用</h2>
+<h3 id="blssig">BLS数字签名</h3>
+<p>现在是介绍另一个 BLS 的时候了：Boneh、Lynn 和 Shacham。（L 与 BLS12-381 中的 L 是一个人；B 和 S 不是。）</p>
+
+<p>BLS 签名<a href="https://www.iacr.org/archive/asiacrypt2001/22480516.pdf">于 2001 年</a>提出，比 2002 年<a href="https://eprint.iacr.org/2002/088.pdf">BLS 曲线系列</a>发布稍早一些。令人高兴的是，它们是携手共进的关系。（BLS 签名可以使用其他曲线；BLS 曲线也有签名以外的用途。但是当它们结合在一起时就挺不错。）</p>
+
+<p><a href="https://tools.ietf.org/html/draft-boneh-bls-signature-00">IETF 标准草案</a>中对 BLS 签名方案有相当简洁明了的描述。另请参阅该<a href="https://github.com/kwantam/draft-irtf-cfrg-bls-signature">GitHub 库</a>。</p>
+
+<h4 id="公私钥">公私钥</h4>
+
+<p>私钥（用于签名）就是一个1到$r-1$之间随机选择的一个数，称之为$sk$。</p>
+
+<p>相应的公钥（如果我们<a href="#swapg1g2">对公钥使用$G_1$</a>）为$p k=[s k] g_1$，其中$g_1$为对$G_1$选择的<a href="#generator">生成元</a>。即用$s k$乘上$g_1$，就是把$g_1$ 自己相加$s k$次。</p>
+
+<p>离散对数问题的意思是给定公钥$p k$恢复$s k$是不可行的。</p>
+
+<h4 id="签名">签名</h4>
+
+<p>要对消息 $m$ 签名，我们首先需要将 $m$ 映射到群 $G_2$ 中的一个点（如果我们使用 <a href="#swapg1g2">$G_2$ 进行签名</a>的话）。 对此实现方法的讨论，请参阅下面的<a href="#hashtocurve">哈希到曲线</a>。 现在假设已经可以做到这一点，并将所得的 $G_2$ 上的点称为 $H(m)$。</p>
+
+<p>我们通过计算签名$\sigma=[s k] H(m)$来对消息进行签名， 即是用私钥乘上哈希点。</p>
+
+<h4 id="验证">验证</h4>
+<p>给定消息 $m$、签名 $\sigma$ 和公钥 $p k$，我们想要验证它是否是用与 $p k$ 对应的 $s k$ 签名的。</p>
+
+<p>这就是要用到<a href="#pairing">配对</a>的地方了。当且仅当 $e\left(g_1, \sigma\right)=e(p k, H(m))$ 时，签名才有效。</p>
+
+<p>我们可以用配对的性质来确认这一点：</p>
+
+<p>\(e(p k, H(m))=e\left([s k] g_1, H(m)\right)=e\left(g_1, H(m)\right)^{(s k)}=e\left(g_1,[s k] H(m)\right)=e\left(g_1, \sigma\right)\)</p>
+<h4 id="聚合">聚合</h4>
+
+<p>BLS 签名的一个非常好的特性是它们是可以<a href="https://eprint.iacr.org/2018/483.pdf">聚合</a>的（另请参阅<a href="https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf">原始论文</a>），因此我们只需要两个配对来验证 $n$ 方签名的单个消息，或 $n+1$ 个配对来验证由 $n$ 方签名的 $n$ 条不同消息，而不是你可能天真地期望需要的 $2 n$ 个配对。 配对的计算成本很高，因此这非常有吸引力。</p>
+
+<p>可以聚合不同消息上的签名，或同一消息上的签名。 对于以太坊 2.0 我们聚合相同的消息，因此为了简洁起见这里只考虑这种情况。</p>
+
+<p>要聚合签名，我们只需将它们对应的 $G_2$ 点相加即可：$\sigma_{a g g}=\sigma_1+\sigma_2+\ldots+\sigma_n$。 我们还聚合了对应的$G_1$公钥点 $p k_{a g g}=p k_1+p k_2+\ldots+p k_n$</p>
+
+<p>现在配对的魔法意味着我们可以通过验证 $e\left(g_1, \sigma_{a g g}\right)=e\left(p k_{a g g}, H(m)\right)$ 来验证所有的签名，总共仅包含两个配对。</p>
+
+<h4 id="恶意密钥攻击">恶意密钥攻击</h4>
+
+<p>正如<a href="https://eprint.iacr.org/2018/483.pdf">这里面</a>的 1.1 节所述，当聚合同一消息的签名时，我们需要去注意可能的“恶意公钥攻击”（Rogue public key attack）。</p>
+
+<p>假设你的公钥是 $p k_1$，而我有一个私钥 $s k_2$。 但我没有发布我的真实公钥，而是发布 $p k_2^{\prime}=\left[s k_2\right] g_1-p k_1$ （即我的真实公钥加上你的公钥的逆）。 我可以用我的私钥签名消息 $H(m)$ ，生成 $\sigma=\left[s k_2\right] H(m)$。 然后我发布声明，声称这是你和我共同签署的聚合签名，聚合公钥是 $p k_{a g g}=p k_1+p k_2^{\prime}$。</p>
+
+<p>在验证时，我的声明就得到了验证：在你实际没有时看起来你参与了对消息的签名。： $e(g 1, \sigma)=e\left(g_1,\left[s k_2\right] H(m )\right)=e\left(\left[s k_2\right] g_1, H(m)\right)=e\left(p k_1+p k_2^{\prime}, H(m)\right)$</p>
+
+<p>对此的一种相对简单的防御措施（在以太坊 2.0 中使用的防御措施）是强制验证者注册与其所声称的公钥相对应的私钥的“拥有证明”。 这里你也可以看到，攻击者是没有与$p k_2^{\prime}$对应的$s k_2^{\prime}$的。 这可以简单地通过让验证者在注册时对其公钥签名来完成：如果签名可以使用该公钥进行验证，那么一切就都好。</p>
+
+<p>可以使用<a href="https://crypto.stanford.edu/~dabo/pubs/papers/BLSmultisig.html">更复杂的方案</a>，不需要私钥知识证明 (KOSK)。</p>
+
+<h3 id="swapg1g2">G1和G2对调</h3>
+
+<p>对于数字签名的目的来说，$G_1$ 和 $G_2$ 群是可以对调的。 我们可以选择公钥作为 $G_1$ 的成员，签名作为 $G_2$ 的成员，反之亦可。</p>
+
+<p>权衡点是执行速度和存储大小。 $G_1$的点小且速度快； $G_2$ 的点大且速度慢。 BLS12-381 最初是为了实现 Zcash 而设计的，出于性能原因，他们选择使用 $G_1$ 来表示签名，使用 $G_2$ 来表示公钥。</p>
+
+<p>大多数其他实现都是和Zcash“相反的”。 在以太坊 2.0 中，我们使用 $G_1$ 作为公钥：一方面，公钥聚合比签名聚合发生得更频繁； 另一方面，验证器的公钥需要以状态存储，因此保持较小的表示很重要。 那么签名自然就是 $G_2$ 的点。</p>
+
+<h3 id="点压缩">点压缩</h3>
+
+<p class="warning">注意，有时<a href="#twist">扭</a>操作也被称为点压缩 - 这与我们在这里讨论的完全不是一回事。</p>
+
+<p>为了存储和传输椭圆曲线点，通常会删除 $y$ 坐标。 这使得数据量减半。 对于 BLS12-381，$G_1$ 的点从 96 字节 ($2 \times 381$ 比特四舍五入到字节) 减少到了 48 字节，$G_2$ 的点从 192 字节减少到 96 字节。</p>
+
+<p>任何椭圆曲线点都可以通过使用相关的曲线方程 $E$ 或 $E^{\prime}$ 从 $x$ 坐标来重新生成。 对于曲线上任何有效的 $x$ 坐标，$y$ 要么为零，要么具有两个互为负的可能值：对于 $G_1$，$y= \pm \sqrt{x^3+4}$， $G_2$ 也类似。</p>
+
+<p>由于域元素为 381 位，而 48 字节为 384 位，因此我们有一些空闲位用于标记。 最重要的一个标志用于显示该点对应于哪个 $y$ 值（正值或负值）。 另一位用于表示这是否是无穷远点（无穷远点有许多可能的表示）。 第三个标记位只是简单地指示这是压缩的还是未压缩的表示，尽管在实践中上下文应当会处理这点。</p>
+
+<p>对于 $G_1$ 和 $G_2$ 来说，大约一半的 $x$ 值不在曲线上。 在这种情况下，该点通常被解码为无穷远点。 但除非设置了无穷标志位——这种情况下我们不会尝试解码该点——这是一个错误条件。</p>
+
+<p>标志位和$x$值如何编码的具体细节见<a href="https://github.com/zcash/librustzcash/blob/6e0364cd42a2b3d2b958a54771ef51a8db79dd29/pairing/src/bls12_381/README.md#serialization">这里</a>。</p>
+
+<h3 id="子群成员检验subgroupcheck">子群成员检验{#subgroupcheck}</h3>
+
+<p>当处理任何来源未知的点时，无论它是压缩的还是未压缩的，很重要的一点是去检查它是否位于正确的子群中。 上面描述的点解压缩只是得到了曲线上的一个点； 我们不知道它是否位于正确的$G_1$或$G_2$中。</p>
+
+<p>主要的问题似乎在于 $E\left(F_q\right)$ 和 $E^{\prime}\left(F_{q^2}\right)$ 都包含小子群（你可以通过分解协因子来看到这点，例如使用<a href="https://www.alpertron.com.ar/ECM.HTM">此工具</a>。） 正如<a href="https://eprint.iacr.org/2015/247.pdf">这篇论文</a>所讨论的，无意中使用这些小子群中的点可能会导致漏洞。</p>
+
+<p>原则上子群检验很简单：只需将我们的点乘以 $r$ 即可。 对于 $G_1$ 或 $G_2$ 中的点，结果为相应的无穷远点； 对于这些群之外的点，则不会。</p>
+
+<p>不幸的是，这在实践中很慢，特别是对于 $G_2$，因为 $r$ 太大了。 作为替代方案，有一些<a href="https://eprint.iacr.org/2019/814.pdf">新技术</a>利用自同态来执行更快的子群检验。</p>
+
+<h3 id="generator">生成元</h3>
+
+<p>$G_1$ 和 $G_2$ 是素数阶循环群，因此任何点（除了单位元/无穷远点）都是生成元。 因此，选定生成元只是惯例上的考虑。</p>
+
+<p>$G_1$ 和 $G_2$ 的生成元点在<a href="https://github.com/zcash/librustzcash/blob/6e0364cd42a2b3d2b958a54771ef51a8db79dd29/pairing/src/bls12_381/README.md#generators">这里</a>以十进制给出，相同的点在<a href="https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-02.html#rfc.section.4.2.2">这里</a>以十六进制给出。</p>
+
+<p>这些是根据<a href="https://github.com/zcash/librustzcash/blob/6e0364cd42a2b3d2b958a54771ef51a8db79dd29/pairing/src/bls12_381/README.md#generators">如下</a>选定的：</p>
+
+<blockquote>
+  <p>$G_1$ 和 $G_2$ 的生成元是通过查找字典序最小的有效 $x$ 坐标及其字典序最小的 $y$ 坐标并通过协因子对其进行缩放来计算的，以便结果不是无穷远点。</p>
+</blockquote>
+
+<p>根据我的计算，$h_1$ 和 $h_2$ 分别为相应群的<a href="#cofactor">协因子</a>时，这使得 $G_1$ 生成元 $g_1=\left[h_1\right] p_1$，其中 $p_1$ 如下，</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>p1 = (0x04, 0x0a989badd40d6212b33cffc3f3763e9bc760f988c9926b26da9dd85e928483446346b8ed00e1de5d5ea93e354abe706c)
+</code></pre></div></div>
+
+<p>且$G_2$的生成元$g_2=\left[h_2\right] p_2$，其中$p_2$如下，</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>p2 = ([0x02, 0x00],[0x013a59858b6809fca4d9a3b6539246a70051a3c88899964a42bc9a69cf9acdd9dd387cfa9086b894185b9a46a402be73,0x02d27e0ec3356299a346a09ad7dc4ef68a483c3aed53f9139d2f929a3eecebf72082e5e58c6da24ee32e03040c406d4f])
+
+</code></pre></div></div>
+
+<p class="info">我认为“字典序最小”意思是将基域中的所有数视为非负数，并且只取较小的数字，优先考虑实部而不是虚部。</p>
+
+<h3 id="最终指数">最终指数</h3>
+<h3 id="hashtocurve">哈希到曲线</h3>
+<h4 id="哈希并检验">哈希并检验</h4>
+<h4 id="simplified-swu-map">Simplified SWU map</h4>
+<h3 id="cofactorclear">协因子清除</h3>
+<h3 id="扩展塔">扩展塔</h3>
+<h3 id="坐标系">坐标系</h3>
+<h4 id="仿射坐标">仿射坐标</h4>
+<h4 id="标准射影坐标">标准射影坐标</h4>
+<h4 id="jacobian-坐标">Jacobian 坐标</h4>
+
+<h2 id="进一步阅读资源">进一步阅读资源</h2>
+<p>上面已经有了<em>很多</em>参考链接，这里就不重复了。 我只会挑一些特别有用或有趣的。</p>
+
+<p>有用的参考资料：</p>
+
+<ul>
+  <li><a href="https://electriccoin.co/blog/new-snark-curve/">原始</a>BLS12-381的发布</li>
+  <li>参数和序列化的<a href="https://github.com/zcash/librustzcash/blob/6e0364cd42a2b3d2b958a54771ef51a8db79dd29/pairing/src/bls12_381/README.md">简洁</a>描述</li>
+  <li><a href="https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-02.html#rfc.section.4.2.2">IETF 标准</a>草案</li>
+  <li>一个上述内容的太长不看版：<a href="https://gist.github.com/hermanjunge/3308fbd3627033fc8d8ca0dd50809844">给大忙人的BLS</a></li>
+</ul>
+
+<p>一般来说，配对库的实现往往是高度优化的且/或非常通用的（支持多曲线），这使得很难去学。 Paul Miller 使用 JavaScript/TypeScript 编写的 <a href="https://github.com/paulmillr/noble-bls12-381">Noble BLS12-381</a> 库绝对是最容易理解的库之一。</p>
+
+<p>最后，还有一些有趣的读物：</p>
+
+<ul>
+  <li>这份关于 <a href="https://github.com/pornin/curve9767/raw/master/doc/curve9767.pdf">Curve9769</a> 的全新白皮书与 BLS12-381 没有直接关系，但它是对设计和实现椭圆曲线（此例中不是配对友好的）的苦与乐写得很好的精彩探索。</li>
+  <li><a href="https://ecc2017.cs.ru.nl/slides/ecc2017-aranha.pdf">配对没有死，只是在休息</a>。 一个很好的概述介绍。 有一些 BLS12-381 的东西。</li>
+</ul>
+
+<p>就这样吧，朋友们拜拜！</p>
+
+<div class="footnotes" role="doc-endnotes">
+  <ol>
+    <li id="fn:1" role="doc-endnote">
+      <p>我多年前学习过数学，但一直努力逃避了任何与纯数学有关的事情，包括群论。 我现在后悔了。 不管怎么说，这篇不会太技术性，但我也不是专家，所以可能会出错，而且一般来说也会有点手忙脚乱。 如果这点不是很明显的话我再澄清一下，我不是密码学家。 <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:8" role="doc-endnote">
+      <p>:joy: 请原谅我。 <a href="#fnref:8" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:9" role="doc-endnote">
+      <p>…因为我们之前选择了迹零子群。 <a href="https://www.craigcostello.com.au/s/PairingsForBeginners.pdf">Pairings For Beginners</a>深入探讨了这方面的细节。 <a href="#fnref:9" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:10" role="doc-endnote">
+      <p>感谢我的审稿人的这个洞见。 <a href="#fnref:10" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:11" role="doc-endnote">
+      <p>$[a] P$ 是点 $P$ 与标量 $a$ 的乘积，即把$P$相加$a$次。 传统上，$G_1$ 和 $G_2$ 中的群运算以加法表示，而 $G_T$ 中以乘法表示。 <a href="#fnref:11" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:12" role="doc-endnote">
+      <p>这个世界里的数字都是巨大的。 $r$ 除 $\left(q^{12}-1\right)$ 的次数为十进制 1299 位。 该数字实际上用于计算配对时的最终求幂。 <a href="#fnref:12" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+    <li id="fn:13" role="doc-endnote">
+      <p>这很容易看出。 子群$G$的阶为$r$，其协因子为$h$，使得$h r=n$，即整个椭圆曲线群的阶。 考虑椭圆曲线群的任意元素 $P$。 我们有 $\mathcal{O}=[n] P=<a href="[h] P">r</a>$。 因此，$[h] P \in G$。 虽然不是特定于 BLS12-381，但这有一篇关于协因子清除的<a href="http://loup-vaillant.fr/tutorials/cofactor">优秀文章</a>。 <a href="#fnref:13" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
+    </li>
+  </ol>
+</div>]]></content><author><name>Kurt Pan</name></author><category term="椭圆曲线" /><category term="双线性映射" /><category term="BLS曲线" /><category term="BLS签名" /><summary type="html"><![CDATA[原文：BLS12-381 For The Rest Of Us 作者：Ben Edgington 译者：Kurt Pan 开始鼓捣之前，我希望我知道的。 近年来，椭圆曲线BLS12-381逐渐火了起来。许多协议都将其应用到了数字签名和零知识证明中：Zcash、Ethereum 2.0、Skale、Algorand、Dfinity、Chia 等等。 不幸的是，现有的关于 BLS12-381 的资料里充满着晦涩的咒语，比如“实例化其六度扭”和“最优扩张域塔”。我就是来解决这个问题的 :smile: 1 我不会对椭圆曲线及其令人兴奋的群的性质进行一般性介绍。这方面已经有一些很棒的入门资料了，我将假设读者具有这些基础知识。当然，这里的很多内容并非只特定于 BLS12-381，而是也适用于其他曲线。 我多年前学习过数学，但一直努力逃避了任何与纯数学有关的事情，包括群论。 我现在后悔了。 不管怎么说，这篇不会太技术性，但我也不是专家，所以可能会出错，而且一般来说也会有点手忙脚乱。 如果这点不是很明显的话我再澄清一下，我不是密码学家。 &#8617;]]></summary></entry><entry><title type="html">ZK-SNARKs中的算术化</title><link href="http://localhost:4000/2023/04/04/arithmetization.html" rel="alternate" type="text/html" title="ZK-SNARKs中的算术化" /><published>2023-04-04T08:00:00+08:00</published><updated>2023-04-04T08:00:00+08:00</updated><id>http://localhost:4000/2023/04/04/arithmetization</id><content type="html" xml:base="http://localhost:4000/2023/04/04/arithmetization.html"><![CDATA[<blockquote>
   <ul>
     <li>原文：<a href="https://www.notamonadtutorial.com/arithmetization-schemes-for-zk-snarks/">Arithmetization schemes for ZK-SNARKs</a></li>
     <li>作者：Not a Monad Tutorial</li>
@@ -845,123 +1226,7 @@ A z \times B z=u C z+E
 
 <h2 id="结论">结论</h2>
 
-<p>在这篇文章中，我概述了<strong>哈希到椭圆曲线</strong>的作者提出的各种安全和性能考虑。 我相信一组设计良好且安全的哈希到曲线密码套件将极大地有益于密码学领域，因为这些函数是许多重要协议的核心。 为此，有必要对本标准草案进行更具建设性的审查。</p>]]></content><author><name>Kurt Pan</name></author><category term="secp256k1曲线" /><category term="哈希到曲线" /><summary type="html"><![CDATA[原文：Hashing to the secp256k1 Elliptic Curve 作者：weijie.eth 译者：Kurt Pan 许多密码学协议，比如可聚合分布式密钥生成和BLS签名方案，都需要用到哈希到曲线算法，确定性地将任意字节串转换成椭圆曲线上的一个点。这样的算法并非平凡，因为不仅仅是要产生有效的曲线点，而且还要以安全且高效的方式来产生。 这篇文章中，我将总结哈希到曲线函数的技术现状，重点是其在secp256k1椭圆曲线上的应用，以及一般的哈希到曲线算法背后的一些安全考虑和性能优化。]]></summary></entry><entry><title type="html">给人民群众的BLS12-381指南 (未完成)</title><link href="http://localhost:4000/2023/02/23/bls12381-restofus.html" rel="alternate" type="text/html" title="给人民群众的BLS12-381指南 (未完成)" /><published>2023-02-23T08:00:00+08:00</published><updated>2023-02-23T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/23/bls12381-restofus</id><content type="html" xml:base="http://localhost:4000/2023/02/23/bls12381-restofus.html"><![CDATA[<blockquote>
-  <ul>
-    <li>原文：<a href="https://hackmd.io/@benjaminion/bls12-381">BLS12-381 For The Rest Of Us</a></li>
-    <li>作者：Ben Edgington</li>
-    <li>译者：Kurt Pan</li>
-  </ul>
-</blockquote>
-
-<p class="info"><strong><em>开始鼓捣之前，我希望我知道的。</em></strong>
-近年来，椭圆曲线<a href="https://electriccoin.co/blog/new-snark-curve/">BLS12-381</a>已成逐渐火了起来。许多协议都将其应用到了数字签名和零知识证明中：Zcash、Ethereum 2.0、Skale、Algorand、Dfinity、Chia 等等。
-不幸的是，现有的关于 BLS12-381 的材料里充满着晦涩的咒语，比如“实例化其六角扭”和“最优扩展域塔”。我就是来解决这个问题的 :smile: <sup id="fnref:1" role="doc-noteref"><a href="#fn:1" class="footnote" rel="footnote">1</a></sup>
-两个名词的正确翻译和含义
-我不会对椭圆曲线及其令人兴奋的群的性质进行一般性介绍。这方面已经有一些<a href="https://andrea.corbellini.name/2015/05/17/elliptic-curve-cryptography-a-gentle-introduction/">很棒的入门书</a>了，我将假设读者具有这些基础知识。当然，这里有很多内容并非只特定于 BLS12-381，而是也适用于其他曲线。</p>
-
-<!--more-->
-
-<h2 id="动机">动机</h2>
-<p>BLS12-381 是一个配对友好的椭圆曲线。</p>
-
-<p><a href="https://en.wikipedia.org/wiki/Pairing-based_cryptography">基于配对的密码学</a>在过去几十年得到了很大发展，使很多有用的新应用成为了可能，例如<a href="https://crypto.stanford.edu/~dabo/pubs/papers/aggreg.pdf">可高效聚合的</a><a href="https://www.iacr.org/archive/asiacrypt2001/22480516.pdf">短数字签名</a>、<a href="https://en.wikipedia.org/wiki/Boneh-Franklin_scheme">基于身份的密码学</a>、<a href="http://cgi.di.uoa.gr/~aggelos/crypto/page4/assets/joux-tripartite.pdf">单轮多方密钥交换</a>和高效的多项式承诺方案（如<a href="https://dankradfeist.de/ethereum/2020/06/16/kate-polynomial-commitments.html">KZG承诺</a>。</p>
-
-<p>配对友好的椭圆曲线是具有良好的嵌入度（将在<a href="">下面</a>解释！）和大素数阶子群（也见<a href="">下文</a>）的曲线。这些曲线很少见。如果你随机创建一条椭圆曲线，它是配对友好的可能性非常之小。然而，它们是可以构造出来的， BLS 曲线就被显式构造为配对友好的。还有<a href="https://eprint.iacr.org/2006/372.pdf">其他几个</a>配对友好曲线系列。</p>
-
-<details>
-<summary><b>如果你想了解有关基于配对的密码学的更多信息，请阅读下面这些不错的材料：</b> <i>（点击展开。）</i></summary>
-<p style="margin-left: .3em; border-left: .15em solid black; padding-left: .5em;">
-一个简短的（但技术性的）<a href="https://courses.csail.mit.edu/6.897/spring04/L25.pdf">解释</a>，以及<a href="https://www.math.uwaterloo.ca/~ajmeneze/publications/pairings.pdf">另一个</a>。
-<br /><br />
-<a href="https://vitalik.ca/general/2017/01/14/exploring_ecp.html">Vitalik 对椭圆曲线配对</a>进行了很好的一般性介绍。
-<br /><br />
-这份<a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4730686/">NIST 报告</a>可读性很强。我推荐第 2 节和附录。
-<br /><br />
-同样好的背景材料是配对友好曲线的<a href="https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-02.html">IETF 标准草案</a>。
-<br /><br />
-如果你想真的<em>理解</em>这些东西，那么<a href="https://www.craigcostello.com.au/s/PairingsForBeginners.pdf">Pairings for Beginners</a>就很棒。如果你仔细研究，学习里面的例子，事实证明它并没有看起来那么可怕。我真的很推荐这个（但我也一直都在学习中……）。
-</p>
-</details>
-
-<h2 id="关于曲线bls12-381">关于曲线BLS12-381</h2>
-<h3 id="历史">历史</h3>
-<p>曲线 BLS12-381是由<a href="https://twitter.com/ebfull">Sean Bowe</a>在 2017 年初<a href="https://electriccoin.co/blog/new-snark-curve/">设计</a>的，作为一次 Zcash 协议升级的基础内容。它既对配对友好（使其对数字签名高效）又对构建 zkSnarks 有效。</p>
-
-<p>“下一代”、可扩展区块链协议的激增使得生成可以高效聚合以及轻松设置门限的短数字签名变得非常重要。BLS12-381 的特性使其经常成为这些协议的首选曲线。</p>
-
-<p>一些密码学库——Apache 的<a href="https://milagro.apache.org/">Milagro</a>等成熟库，以及<a href="https://github.com/herumi/mcl">Herumi</a>和<a href="https://github.com/supranational/blst">Blst</a>等新兴库——都支持 BLS12-381。并且已经有将 BLS12-381 纳入 IETF 标准的举措，例如<a href="https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-02.html#rfc.section.4.2.2">Pairing-Friendly Curves</a>、<a href="https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-8.9">Hashing to Elliptic Curves</a>和<a href="https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00#section-4.2">BLS signatures</a>。这对于协议互操作性来说是个好消息！</p>
-
-<h3 id="命名">命名</h3>
-<p>BLS12-381 是<a href="https://eprint.iacr.org/2002/088.pdf">Barreto、Lynn 和 Scott</a>描述的曲线族的一部分（它们是此处显示的 B、L 和 S -<a href="">稍后</a>将出现不同的 BLS 三人组）。</p>
-
-<p>12 是曲线的嵌入度：既不太低也不太高。<a href="">稍后</a>我们将讨论嵌入度。</p>
-
-<p>381是表示曲线上坐标所需的比特数：域模数，$q$。 一个点的坐标来自一个具有素数阶的有限域，而那个素数，$q$, 是 381 比特。381 是一个相当方便的数字，因为我们可以为每个域元素使用 48 个字节，剩下 3 比特用于有用的标志或算术优化。这个数字的大小取决于<a href="">安全要求</a>和实现效率。</p>
-
-<h3 id="曲线方程和参数">曲线方程和参数</h3>
-<h3 id="域扩展">域扩展</h3>
-<h3 id="两条曲线">两条曲线</h3>
-<h3 id="子群">子群</h3>
-<h3 id="扭">扭</h3>
-<h3 id="配对">配对</h3>
-<h3 id="嵌入度">嵌入度</h3>
-<h3 id="安全级别">安全级别</h3>
-<h3 id="协因子">协因子</h3>
-<h3 id="单位根">单位根</h3>
-
-<h2 id="使用曲线bls12-381">使用曲线BLS12-381</h2>
-<h3 id="bls数字签名">BLS数字签名</h3>
-<p>现在是介绍另一个 BLS 的时候了：Boneh、Lynn 和 Shacham。（L 与 BLS12-381 中的 L 是一个人；B 和 S 不是。）</p>
-
-<p>BLS 签名<a href="https://www.iacr.org/archive/asiacrypt2001/22480516.pdf">于 2001 年</a>提出，比 2002 年<a href="https://eprint.iacr.org/2002/088.pdf">BLS 曲线系列</a>发布稍早一些。令人高兴的是，它们是携手共进的关系。（BLS 签名可以使用其他曲线；BLS 曲线也有签名以外的用途。但是当它们结合在一起时就挺不错。）</p>
-
-<p><a href="https://tools.ietf.org/html/draft-boneh-bls-signature-00">IETF 标准草案</a>中对 BLS 签名方案有相当简洁明了的描述。另请参阅该<a href="https://github.com/kwantam/draft-irtf-cfrg-bls-signature">GitHub 库</a>。</p>
-
-<h4 id="公私钥">公私钥</h4>
-<h4 id="签名">签名</h4>
-<h4 id="验证">验证</h4>
-<h4 id="聚合">聚合</h4>
-<h4 id="恶意密钥攻击">恶意密钥攻击</h4>
-<h3 id="交换g1和g2">交换G1和G2</h3>
-<h3 id="点压缩">点压缩</h3>
-<h3 id="子群成员检验">子群成员检验</h3>
-<h3 id="生成元">生成元</h3>
-<h3 id="最终指数">最终指数</h3>
-<h3 id="哈希到曲线">哈希到曲线</h3>
-<h4 id="哈希并检验">哈希并检验</h4>
-<h4 id="simplified-swu-map">Simplified SWU map</h4>
-<h3 id="协因子清除">协因子清除</h3>
-<h3 id="扩展塔">扩展塔</h3>
-<h3 id="坐标系">坐标系</h3>
-<h4 id="仿射坐标">仿射坐标</h4>
-<h4 id="标准射影坐标">标准射影坐标</h4>
-<h4 id="jacobian-坐标">Jacobian 坐标</h4>
-
-<h2 id="进一步阅读资源">进一步阅读资源</h2>
-<p>上面链接了很多参考资料，这里就不重复了。 我只会挑出一些特别有用或有趣的东西。</p>
-
-<p>有用的参考资料：</p>
-
-<p>原始 BLS12-381 公告
-参数和序列化的简明描述
-IETF 标准草案
-上面的 tl;dr 版本，BLS for Busy People
-一般来说，配对库的实现往往是高度优化的和/或非常通用的（支持许多曲线），这使得它们很难学习。 Paul Miller 的 JavaScript/TypeScript 中的 Noble BLS12-381 库绝对是比较容易理解的。</p>
-
-<p>最后，一些有趣和有趣的读物：</p>
-
-<p>这份关于 Curve9769 的全新白皮书与 BLS12-381 没有直接关系，但它是对设计和实现椭圆曲线（在这种情况下不是配对友好的）的乐趣和痛苦的写得很好的精彩探索。
-配对并没有死，只是在休息。 一个很好的概述介绍。 一些 BLS12-381 的东西。</p>
-
-<p>就这样吧，朋友们拜拜！</p>
-
-<div class="footnotes" role="doc-endnotes">
-  <ol>
-    <li id="fn:1" role="doc-endnote">
-      <p>我多年前学习过数学，但一直在努力回避任何与纯数学有关的事情，包括群论。 我现在很后悔。 无论如何，这不会太技术性，但我也不是专家，所以可能会出错，而且一般来说会有点手忙脚乱。 如果不是很明显的话我再澄清一下，我不是密码学家。 <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>
-    </li>
-  </ol>
-</div>]]></content><author><name>Kurt Pan</name></author><category term="双线性映射" /><category term="BLS曲线" /><category term="BLS签名" /><summary type="html"><![CDATA[原文：BLS12-381 For The Rest Of Us 作者：Ben Edgington 译者：Kurt Pan 开始鼓捣之前，我希望我知道的。 近年来，椭圆曲线BLS12-381已成逐渐火了起来。许多协议都将其应用到了数字签名和零知识证明中：Zcash、Ethereum 2.0、Skale、Algorand、Dfinity、Chia 等等。 不幸的是，现有的关于 BLS12-381 的材料里充满着晦涩的咒语，比如“实例化其六角扭”和“最优扩展域塔”。我就是来解决这个问题的 :smile: 1 两个名词的正确翻译和含义 我不会对椭圆曲线及其令人兴奋的群的性质进行一般性介绍。这方面已经有一些很棒的入门书了，我将假设读者具有这些基础知识。当然，这里有很多内容并非只特定于 BLS12-381，而是也适用于其他曲线。 我多年前学习过数学，但一直在努力回避任何与纯数学有关的事情，包括群论。 我现在很后悔。 无论如何，这不会太技术性，但我也不是专家，所以可能会出错，而且一般来说会有点手忙脚乱。 如果不是很明显的话我再澄清一下，我不是密码学家。 &#8617;]]></summary></entry><entry><title type="html">Daily Hunting of The SNARK (02/22/23)</title><link href="http://localhost:4000/2023/02/22/dhos.html" rel="alternate" type="text/html" title="Daily Hunting of The SNARK (02/22/23)" /><published>2023-02-22T08:00:00+08:00</published><updated>2023-02-22T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/22/dhos</id><content type="html" xml:base="http://localhost:4000/2023/02/22/dhos.html"><![CDATA[<p><a href="https://twitter.com/rkm0959">@rkm0959：</a>超椭圆曲线的故事，包括<a href="https://twitter.com/secconctf">@secconctf</a>，<a href="https://twitter.com/pb_ctf">@pb_ctf</a>和隐藏阶群<br />
+<p>在这篇文章中，我概述了<strong>哈希到椭圆曲线</strong>的作者提出的各种安全和性能考虑。 我相信一组设计良好且安全的哈希到曲线密码套件将极大地有益于密码学领域，因为这些函数是许多重要协议的核心。 为此，有必要对本标准草案进行更具建设性的审查。</p>]]></content><author><name>Kurt Pan</name></author><category term="secp256k1曲线" /><category term="哈希到曲线" /><summary type="html"><![CDATA[原文：Hashing to the secp256k1 Elliptic Curve 作者：weijie.eth 译者：Kurt Pan 许多密码学协议，比如可聚合分布式密钥生成和BLS签名方案，都需要用到哈希到曲线算法，确定性地将任意字节串转换成椭圆曲线上的一个点。这样的算法并非平凡，因为不仅仅是要产生有效的曲线点，而且还要以安全且高效的方式来产生。 这篇文章中，我将总结哈希到曲线函数的技术现状，重点是其在secp256k1椭圆曲线上的应用，以及一般的哈希到曲线算法背后的一些安全考虑和性能优化。]]></summary></entry><entry><title type="html">Daily Hunting of The SNARK (02/22/23)</title><link href="http://localhost:4000/2023/02/22/dhos.html" rel="alternate" type="text/html" title="Daily Hunting of The SNARK (02/22/23)" /><published>2023-02-22T08:00:00+08:00</published><updated>2023-02-22T08:00:00+08:00</updated><id>http://localhost:4000/2023/02/22/dhos</id><content type="html" xml:base="http://localhost:4000/2023/02/22/dhos.html"><![CDATA[<p><a href="https://twitter.com/rkm0959">@rkm0959：</a>超椭圆曲线的故事，包括<a href="https://twitter.com/secconctf">@secconctf</a>，<a href="https://twitter.com/pb_ctf">@pb_ctf</a>和隐藏阶群<br />
 <a href="https://rkm0959.tistory.com/285">https://rkm0959.tistory.com/285</a></p>
 
 <hr />

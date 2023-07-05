@@ -17,10 +17,6 @@
 <lastmod>2023-02-22T08:00:00+08:00</lastmod>
 </url>
 <url>
-<loc>http://localhost:4000/2023/02/23/bls12381-restofus.html</loc>
-<lastmod>2023-02-23T08:00:00+08:00</lastmod>
-</url>
-<url>
 <loc>http://localhost:4000/2023/02/23/hashtosecp256k1.html</loc>
 <lastmod>2023-02-23T08:00:00+08:00</lastmod>
 </url>
@@ -39,6 +35,10 @@
 <url>
 <loc>http://localhost:4000/2023/04/04/arithmetization.html</loc>
 <lastmod>2023-04-04T08:00:00+08:00</lastmod>
+</url>
+<url>
+<loc>http://localhost:4000/2023/07/01/bls12381-restofus.html</loc>
+<lastmod>2023-07-01T08:00:00+08:00</lastmod>
 </url>
 <url>
 <loc>http://localhost:4000/about.html</loc>
