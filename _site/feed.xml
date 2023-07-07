@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-07-05T13:39:36+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">给人民群众的BLS12-381指南</title><link href="http://localhost:4000/2023/07/01/bls12381-restofus.html" rel="alternate" type="text/html" title="给人民群众的BLS12-381指南" /><published>2023-07-01T08:00:00+08:00</published><updated>2023-07-01T08:00:00+08:00</updated><id>http://localhost:4000/2023/07/01/bls12381-restofus</id><content type="html" xml:base="http://localhost:4000/2023/07/01/bls12381-restofus.html"><![CDATA[<blockquote>
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh"><generator uri="https://jekyllrb.com/" version="4.3.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" hreflang="zh" /><updated>2023-07-07T13:39:56+08:00</updated><id>http://localhost:4000/feed.xml</id><title type="html">密码之地 Cryptoland</title><subtitle>开放互联网上密码学中文内容的应许之地 &gt;</subtitle><author><name>Kurt Pan</name></author><entry><title type="html">给人民群众的BLS12-381指南</title><link href="http://localhost:4000/2023/07/01/bls12381-restofus.html" rel="alternate" type="text/html" title="给人民群众的BLS12-381指南" /><published>2023-07-01T08:00:00+08:00</published><updated>2023-07-01T08:00:00+08:00</updated><id>http://localhost:4000/2023/07/01/bls12381-restofus</id><content type="html" xml:base="http://localhost:4000/2023/07/01/bls12381-restofus.html"><![CDATA[<blockquote>
   <ul>
     <li>原文：<a href="https://hackmd.io/@benjaminion/bls12-381">BLS12-381 For The Rest Of Us</a></li>
     <li>作者：Ben Edgington</li>
@@ -51,7 +51,50 @@ Vitalik 对<a href="https://vitalik.ca/general/2017/01/14/exploring_ecp.html">�
 <p>381是表示曲线上坐标所需的比特数：域模数，$q$。 一个点的坐标来自一个具有素数阶的有限域，而那个素数，$q$, 是 381 比特。381 是一个相当方便的数字，因为我们可以为每个域元素使用 48 个字节，剩下 3 比特用于有用的标志或算术优化。这个数字的大小取决于<a href="">安全要求</a>和实现效率。</p>
 
 <h3 id="曲线方程和参数">曲线方程和参数</h3>
+<p>BLS12-381曲线的基础方程是$y^2=x^3+4$。</p>
 
+<p>一条BLS 曲线的关键参数是由单个参数 $\mathbf{x}$ （与曲线方程中的 $x$ 不同！）来设置的，可以通过选择该参数来为曲线提供对实现良好的性质。 BLS12-381 源自<a href="https://eprint.iacr.org/2006/372.pdf">“分类法”论文</a>中构造 6.6 的 $k \equiv 0(\bmod 6)$ 的情况。</p>
+
+<p>BLS12-381 的具体设计目标如下：</p>
+<ul>
+  <li>$\mathbf{x}$ 具有“低汉明权重”，即只有很少的位设置为1 。 这对于计算配对算法（米勒循环）的效率尤其重要。</li>
+  <li>上面提到的域模数 $q$ 是质数且具有 383 位或更少，这使得在其上进行 64 位或 32 位算术更加高效。</li>
+  <li>使用的子群的阶 $r$ 是质数且具有 255 位或更少，与上面的原因相同。</li>
+  <li>安全目标是 128 比特 - 见<a href="#securelevel">下文</a>。</li>
+  <li>为了支持 zkSnark 方案，我们希望在 $F_r$ 域中具有大2的幂的<a href="#rootofunity">单位根</a>。 即对于一些较大的 $n$，我们希望 $2^n$ 成为 $r-1$ 的因子。 （使 $\mathrm{x}$ 为 $2^{\frac{n}{2}}$ 的倍数即可实现此目的。）该性质是能够使用快速傅立叶变换来实现多项式乘法等有趣事物的关键。</li>
+</ul>
+
+<p>值 $\mathbf{x}=$ <code class="language-plaintext highlighter-rouge">-0xd201000000010000</code> （十六进制，注意它是负数）给出了满足这些条件的最大 $q$ 和最低汉明权重。 有了这个 $\mathbf{x}$ 值，我们就有，</p>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">参数</th>
+      <th style="text-align: left"> </th>
+      <th style="text-align: left">方程</th>
+      <th style="text-align: left">值（十六进制）</th>
+      <th style="text-align: left">注</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">域模数</td>
+      <td style="text-align: left">$q$</td>
+      <td style="text-align: left">$\frac{1}{3}(\mathbf{x}-1)^2\left(\mathbf{x}^4-\mathbf{x}^2+1\right)+x$</td>
+      <td style="text-align: left">0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab</td>
+      <td style="text-align: left">381 位, 素数</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">子群大小</td>
+      <td style="text-align: left">$r$</td>
+      <td style="text-align: left">$\left(\mathbf{x}^4-\mathbf{x}^2+1\right)$</td>
+      <td style="text-align: left">0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001</td>
+      <td style="text-align: left">255位，素数</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>本节大部分内容的<a href="https://github.com/zkcrypto/pairing/tree/master/src/bls12_381">参考</a>。 <a href="https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-02.html#rfc.section.4.2.2">IETF 标准中</a>也包含大量曲线数据。</p>
 <h3 id="域扩张">域扩张</h3>
 
 <p>域扩张是椭圆曲线配对的基础。 BLS12-381中的“12” 不仅是嵌入度，也是需要使用的（相对）域扩张度。</p>
@@ -322,15 +365,54 @@ Applying our rule, by substituting $x^2=-1$, gives us the final result $(a, b) \
 <p class="info">我认为“字典序最小”意思是将基域中的所有数视为非负数，并且只取较小的数字，优先考虑实部而不是虚部。</p>
 
 <h3 id="最终指数">最终指数</h3>
+<p>Calculation of a pairing has two parts: the Miller loop and the final exponentiation. Both are quite expensive, but there’s a nice hack you can do to reduce the impact of the final exponentiation.
+Normally, we calculate two full pairings in order to perform signature verification, to check whether $e\left(g_1, \sigma\right)=e(p k, H(m))$.</p>
+
+<p>If we denote as $e^{\prime}(\cdot, \cdot)$ the pairing without the final exponentiation, then for, some $x$, we are checking whether $e^{\prime}\left(g_1, \sigma\right)^x=e^{\prime}(p k, H(m))^x$. ( $x$ happens to be $\left(q^k-1\right) / r$, which is huge.)
+We know how to multiply in group $G_T$, so we can reorganise this as a check whether $\left(e^{\prime}\left(-g_1, \sigma\right) e^{\prime}(p k, H(m))\right)^x=1$. (We can negate any one of the points: the magic of pairings makes this equivalent to taking the inverse in $G_T$.)
+So, to verify a signature, we do the two Miller loops, one with a negated input value, multiply the results and then do a single final exponentiation. If the result is unity in $G_T$ then our pairings match. This ought to give a worthwhile speedup.</p>
+
+<p>配对的计算分为两个部分：米勒循环（Miller loop）和最终指数（final exponentiation）。 两者都相当昂贵，但是可以采取一些不错的技巧来减少最终指数的影响。</p>
+
+<p>通常我们会计算两个完整的配对来进行签名验证，检查是否$e\left(g_1, \sigma\right)=e(p k, H(m))$。</p>
+
+<p>如果我们将没有最终指数的配对表示为 $e^{\prime}(\cdot, \cdot)$，那么对某个 $x$，我们检查是否 $e^{\prime}\left(g_1, \sigma\right)^x=e^{\prime}(p k, H(m))^x$。 （ $x$ 恰好为 $\left(q^k-1\right) / r$，这很大的。）</p>
+
+<p>我们知道如何在群 $G_T$ 中相乘，因此我们可以将其重新组织为检查是否 $\left(e^{\prime}\left(-g_1, \sigma\right) e^{\prime}(p k, H(m))\right)^x=1$。 （我们可以否定任何一点：配对的魔力使得这相当于在 $G_T$ 中取逆。）</p>
+
+<p>因此，为了验证签名，我们执行两个米勒循环，其中一个具有负输入值，将结果相乘，然后进行一次最终求幂。 如果 $G_T$ 的结果是一致的，那么我们的配对匹配。 这应该会带来值得的加速。</p>
+
 <h3 id="hashtocurve">哈希到曲线</h3>
 <h4 id="哈希并检验">哈希并检验</h4>
 <h4 id="simplified-swu-map">Simplified SWU map</h4>
 <h3 id="cofactorclear">协因子清除</h3>
+<p>We discussed multiplying by the cofactor as a way to make an arbitrary point on $E$ or $E^{\prime}$ into a point in $G_1$ or $G_2$ respectively. This is useful when hashing to the curve, for example.
+The $G_2$ co-factor is huge, so multiplying by it is slow. However, there are faster ways to map curve points into $G_2$ using an endomorphism (a map of a group to itself). This features in the new standard (see section 7).
+The endomorphism we want to use was subject to a patent, but this has now expired everywhere.
+As a workaround to the patent, instead of multiplying by the $G_2$ cofactor, the standard suggests multiplying by an effective cofactor (see section 8.9.2 for the value) which gives the same result as the endomorphism. The effective cofactor is even larger than the $G_2$ cofactor, but the multiplication can be implemented using an addition chain as an optimisation.
+The idea is that, now that the patent has expired, the endomorphism can be just dropped in as a replacement for the effective cofactor multiplication.</p>
 <h3 id="扩展塔">扩展塔</h3>
 <h3 id="坐标系">坐标系</h3>
+<p>求域元素的逆（即除法）是一项昂贵的操作，因此椭圆曲线算术的实现会尽可能避免该操作。 如果我们选择正确的坐标系来表示点，这会有所帮助。</p>
 <h4 id="仿射坐标">仿射坐标</h4>
+<p>仿射坐标是点的传统表示形式，就是坐标对$(x,y)$，其中$x$和$y$满足曲线方程。 这是我们在存储和传输点时所通常使用的。</p>
 <h4 id="标准射影坐标">标准射影坐标</h4>
+<p>However, it is not always the most efficient form to use when actually working with points, and there are two other schemes I’m aware of that are used for BLS12-381.</p>
+
+<p>The basic idea is to represent the coordinate using notional fractions, reducing the number of actual division operations needed. To do this, a third coordinate is introduced and we use $(X, Y, Z)$ for the internal representation of a point. Like our familiar fractions, there are many representations of the same value, all corresponding to a single actual value $\left(\frac{1}{2}, \frac{3}{6}, \frac{197}{394}\right.$ are all the same number).
+The two systems I know of in use for BLS12-381 are Standard Projective coordinates and Jacobian coordinates.</p>
+
+<p>然而，在实际处理点时，它并不总是最有效的形式，而且我知道还有两种用于 BLS12-381 的方案。</p>
+
+<p>基本思想是使用概念分数来表示坐标，从而减少实际所需除法运算的数量。 为此，引入了第三个坐标，我们使用 $(X, Y, Z)$ 作为点的内部表示。 就像我们熟悉的分数一样，同一个值有多种表示形式，都对应于一个实际值 $\left(\frac{1}{2}, \frac{3}{6}, \frac{197}{394 }\right.$ 都是相同的数字）。
+据我所知，BLS12-381 使用的两个系统是标准射影坐标和雅可比坐标。</p>
+
 <h4 id="jacobian-坐标">Jacobian 坐标</h4>
+<p>A different kind of projective coordinates are Jacobian coordinates. In this scheme, the Jacobian point $(X, Y, Z)$ represents the Affine point $\left(X / Z^2, Y / Z^3\right)$. The curve equation becomes $Y^2=X^3+4 Z^6$</p>
+
+<p>The sample code for the constant-time hash-to-curve uses Jacobian coordinates under the hood.</p>
+
+<p>Note that, in both schemes, the easiest way to import the Affine point $(x, y)$ is to map it to $(x, y, 1)$</p>
 
 <h2 id="进一步阅读资源">进一步阅读资源</h2>
 <p>上面已经有了<em>很多</em>参考链接，这里就不重复了。 我只会挑一些特别有用或有趣的。</p>
